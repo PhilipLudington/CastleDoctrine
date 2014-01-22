@@ -1,0 +1,4 @@
+mobile
+darkHaloBehind
+noDropShadow
+wifeOwns

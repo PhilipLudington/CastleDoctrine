@@ -1,0 +1,21 @@
+
+
+
+// Updates houses table to have a consecutive_rob_success_count column.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses ADD consecutive_rob_success_count INT NOT NULL AFTER robber_deaths;
+
+UPDATE castleServer_houses set consecutive_rob_success_count = 0;
+
+
+
+ALTER TABLE castleServer_houses_owner_died ADD consecutive_rob_success_count INT NOT NULL AFTER robber_deaths;
+
+UPDATE castleServer_houses_owner_died set consecutive_rob_success_count = 0;
+
+
+
+COMMIT;

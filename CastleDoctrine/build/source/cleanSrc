@@ -1,0 +1,14 @@
+rm -r minorGems/ai
+rm -r minorGems/bench
+rm -r minorGems/doc
+rm -r minorGems/examples
+rm -r minorGems/sound/portaudio
+
+rm -r CastleDoctrine/documentation/html
+rm -r CastleDoctrine/documentation/sourceArt
+rm -r CastleDoctrine/documentation/visualStyle
+rm -r CastleDoctrine/documentation/press
+rm -r CastleDoctrine/documentation/videos
+
+
+

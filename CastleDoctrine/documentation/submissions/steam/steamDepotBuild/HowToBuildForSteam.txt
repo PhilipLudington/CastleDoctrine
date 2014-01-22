@@ -1,0 +1,21 @@
+
+1.  Make a steamDepotBuild/contentFiles directory.
+
+2.  Make contentFiles/windows contentFiles/mac and contentFiles/linux 
+    directories in that directory.
+
+3.  Copy the CastleDoctrine_vXX built folders for each platform into those
+    folders (for example:  contentFiles/windows/CastleDoctrine_v25 ).
+
+3b. Make sure the steamGateClient and necessary platform-specific steam_api
+    DLLs are included in these built folders.
+
+4.  Edit the three depot_build files and update LocalPath in each one to match
+    the version that you are building against.
+
+5.  Edit the app_build file and enter an appropriate "desc" description.
+
+6.  Edit steamworks_sdk_126a/sdk/tools/ContentBuilder/run_build.bat with 
+    account and password, and point it at the app_build file.
+
+7.  Run the run_build.bat script.

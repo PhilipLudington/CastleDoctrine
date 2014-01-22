@@ -1,0 +1,5 @@
+repo: 6e2a2a18b9d8455339d0b3230b832d565b1ee56e
+node: 41c6d25e5fa9dfae8cf2dfa29697decf775754a1
+branch: default
+latesttag: CastleDoctrine_v29
+latesttagdistance: 2

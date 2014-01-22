@@ -1,0 +1,18 @@
+
+// Updates houses table to have a creation_time column.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses ADD creation_time DATETIME NOT NULL AFTER consecutive_rob_success_count, ADD INDEX( creation_time );
+
+UPDATE castleServer_houses set creation_time = SUBTIME( CURRENT_TIMESTAMP, '1 0:00:0.000' );
+
+
+
+ALTER TABLE castleServer_houses_owner_died ADD creation_time DATETIME NOT NULL AFTER consecutive_rob_success_count, ADD INDEX( creation_time );
+
+UPDATE castleServer_houses_owner_died set creation_time = SUBTIME( CURRENT_TIMESTAMP, '1 0:00:0.000' );
+
+
+COMMIT;

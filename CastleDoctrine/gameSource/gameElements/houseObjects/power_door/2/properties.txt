@@ -1,0 +1,4 @@
+blocking
+visionBlocking
+conductiveInternal
+structural

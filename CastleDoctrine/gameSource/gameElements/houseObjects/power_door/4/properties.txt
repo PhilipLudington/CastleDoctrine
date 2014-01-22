@@ -1,0 +1,3 @@
+conductiveInternal
+structural
+stuck

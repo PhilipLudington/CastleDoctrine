@@ -1,0 +1,18 @@
+All returns are whitespace-delimited.
+
+
+
+Most calls can return 'DENIED' on failure
+
+
+
+
+=== Call:
+server.php?action=reflect&email=[signup email address]
+
+Returns:
+serverURL
+
+Where:
+serverURL = full URL of Castle Doctrine server.php that this user should
+            connect to.

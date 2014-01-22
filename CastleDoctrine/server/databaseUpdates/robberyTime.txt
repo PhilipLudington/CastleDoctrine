@@ -1,0 +1,15 @@
+
+# Updates houses table to have a creation_time column.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_users ADD last_robbery_deadline DATETIME NOT NULL AFTER last_robbery_response;
+
+
+# 24 hours, to be safe
+
+UPDATE castleServer_users SET last_robbery_deadline = ADDTIME( CURRENT_TIMESTAMP, '1 0:00:0.000' );
+
+
+COMMIT;

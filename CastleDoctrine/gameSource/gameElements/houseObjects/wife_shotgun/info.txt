@@ -1,0 +1,2 @@
+130
+"%s Shotgun (Trigger Locked)"

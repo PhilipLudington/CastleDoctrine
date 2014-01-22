@@ -1,0 +1,11 @@
+Taken from 1990 census (the only source I could find with both first and 
+last name distributions).  The year-specific data from the SSA only gives
+first names.
+
+http://www.census.gov/genealogy/www/data/1990surnames/names_files.html
+
+
+
+"yob" files (baby first names for specific years) came from:
+
+http://www.ssa.gov/oact/babynames/limits.html

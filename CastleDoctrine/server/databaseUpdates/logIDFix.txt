@@ -1,0 +1,32 @@
+Adding an index column to log table.
+
+
+ALTER TABLE castleServer_log ADD COLUMN log_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT FIRST;
+
+SET autocommit=0;
+
+LOCK TABLE castleServer_log WRITE;
+
+CREATE TABLE castleServer_logTemp LIKE castleServer_log;
+
+LOCK TABLES castleServer_logTemp WRITE, castleServer_log WRITE;
+
+
+INSERT INTO castleServer_logTemp( entry, entry_time) SELECT entry, entry_time FROM castleServer_log ORDER BY entry_time;
+
+
+DELETE FROM castleServer_log;
+
+ALTER TABLE castleServer_log AUTO_INCREMENT = 1;
+
+INSERT INTO castleServer_log( entry, entry_time) SELECT entry, entry_time FROM castleServer_logTemp ORDER BY entry_time;
+
+
+UNLOCK TABLES;
+
+COMMIT;
+
+
+DROP TABLE castleServer_logTemp;
+
+

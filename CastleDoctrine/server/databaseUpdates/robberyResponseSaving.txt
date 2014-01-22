@@ -1,0 +1,1 @@
+ALTER TABLE castleServer_users ADD last_robbery_response LONGTEXT NOT NULL AFTER last_robbed_owner_id;

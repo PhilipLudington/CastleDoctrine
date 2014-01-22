@@ -1,0 +1,336 @@
+writeFailed "Error:  game folder is read-only"
+
+
+loading "Loading..."
+
+
+badPropertiesSignature "Bad properties signature in"
+badSpriteSignature "Bad sprite signature in"
+badReachSignature      "Bad tool reach signature in"
+badTransitionSignature      "Bad transition signature in"
+
+
+
+pauseMessage1 "Press ENTER to resume"
+
+pauseMessage2 "or type something for posterity:"
+
+pauseMessage3 "Press '%' to quit"
+pauseMessage3b "You can't quit now (you'll die)"
+
+pauseMessage4 "-"
+
+
+
+quitMessage "Press ESC to Quit"
+
+email "Email:"
+downloadCode "Download Code:"
+
+paste "Paste"
+
+atSignTip "Insert an '@' sign (to help non-US keyboards)"
+
+
+loginButton "Login"
+
+loginMessage "Logging in..."
+
+reflectorFailed "Invalid response from reflector"
+loginFailed "Login Failed"
+
+outOfDateClient "Please download the latest version."
+
+
+serverShutdownMessage "The server has been shut down for maintenance.##Please try again later."
+
+permadeadMessage "You are permanently dead on this server."
+
+
+houseBeingRobbed "Your house is currently being robbed.##You can't work on it now."
+returnMenu "Menu"
+
+returnHome "Return to Your House"
+
+
+
+
+okay "Okay"
+
+
+workReport "While you were away working for %d hour:"
+workReportPlural "While you were away working for %d hours:"
+
+youEarnReport "You earned $%d"
+wifeEarnReport "%s earned $%d"
+
+
+blueprintDescription "Blueprint for %s house:"
+
+
+
+editDescription "Work on your house:"
+
+loadBackpackDescription "Load your backpack:"
+loadBackpackSellModeDescription "Sell tools:"
+
+backpackLabel "Backpack:"
+vaultLabel "Vault:"
+
+loadBackpack "Backpack"
+
+loadBackpackTip "Load your backpack before leaving"
+
+backpackUndoTip "Undo purchase of %s"
+backpackSellUndoTip "Undo sale of %s"
+backpackMultipleSellUndoTip "Undo sale of %d %s"
+
+openAuctionList "Auctions"
+
+openAuctionListTip "View currently running gallery auctions"
+
+
+gridViewObjects "View full grid of objects"
+gridViewTools "View full grid of tools"
+
+
+pickerDescription "Pick one:"
+pickerBack "Back"
+
+
+doneEdit "Done"
+
+jumpToTapes "Tapes"
+jumpToTapesTip "Leave house and view your security tapes"
+
+
+
+undo "Undo"
+undoTip "Undo (Ctrl-Z)"
+
+eyedropperTip "Ctrl-click an object in your house to copy it"
+
+
+diffHighlightsOn "Turn change highlights on"
+diffHighlightsOff "Turn change highlights off"
+
+galleryLabel "Gallery:"
+galleryArchiveLabel "Archive:"
+
+editBalance "Balance:"
+
+familyExitMessage2 "No empty##family##exit path."
+familyExitMessage  "Family needs##empty path##to exit."
+
+
+
+buyTip "Buy %s for backpack"
+backpackSlotTip "Move %s to vault"
+vaultSlotTip "Move %s to backpack"
+
+backpackHalfSlotTip "Move %d %s to vault"
+vaultHalfSlotTip "Move %d %s to backpack"
+
+
+sellSlotTip "Sell %s for $%d" 
+sellHalfSlotTip "Sell %d %s for $%d" 
+
+
+sellMode "Sell Mode"
+sellHalf "Sell Half"
+sellOne  "Sell One"
+sellAll  "Sell All"
+
+buyMode "Buy Mode"
+moveHalf "Move Half"
+moveOne  "Move One"
+
+
+sellModeTip "Switch to selling tools"
+buyModeTip "Switch to buying tools"
+
+sellHalfTip "Switch to selling half of the items in a slot"
+sellOneTip "Switch to selling one item at a time"
+sellAllTip "Sell everything in backpack and vault for $%d"
+
+moveHalfTip "Switch to moving half of the items in a slot"
+moveOneTip "Switch to moving one item at a time"
+
+
+
+selfTestDescription "Prove that you're not locked out by your own security:##(Reach your vault with no tools.  Be careful...)"
+
+
+auctionDescription "Currently running auctions:"
+
+auctionTimeString "Prices will drop in:"
+auctionPricesStale "New prices available"
+auctionUpdateButton "Update"
+auctionUpdateButtonTip "Fetch latest auction prices"
+
+buyButton "Buy"
+
+buyButtonTip "Buy %s for $%d"
+shortBuyButtonTip "Buy %s"
+
+
+auctionBuyFailed "Someone else bought the item before you."
+auctionBuySucceed "You bought %s for $%d"
+
+
+
+
+houseCheckedIn "House checked back in."
+houseCheckInFailed "House check in failed."
+
+
+
+nameSearch "Name Search:"
+filter "Filter"
+ignoreHouse "Ignore House"
+clearIgnoreList "Un-Ignore All"
+startRobHouse "Rob House"
+viewBlueprint "View House Blueprint"
+
+listRobberyReplays "View Your Security Tapes"
+startProofReplay "View House Self-Test"
+
+emptyList "None found."
+
+robPickListTip "%d tried to rob %s house.  %d died trying"
+
+replayPickListTip "%s stole $%d in %d steps after %d died"
+replayPickListBountyTip "%s died ($%d bounty) in %d steps after %d died"
+
+ignoreTip "Hide house from list until house changes"
+clearIgnoreListTip "Resumes showing all houses, with none ignored"
+
+
+startTileDescription "Welcome Mat"
+
+wifeHolding "%s (carrying $%d)"
+
+
+robDescription "Robbing %s house:##(Five stationary minutes are deadly...)"
+
+robCops "Sirens?"
+
+robBackpack "Backpack:"
+
+viewBlueprintShort "Blueprint"
+viewBlueprintTip "View house blueprint"
+
+
+suicide "Suicide"
+suicideTip "Lose everything and start over"
+unconfirmedSuicideTip "Click confirmation box first..."
+suicideConfirmTip "Confirm suicide"
+
+
+doneRobTest "Give Up"
+
+doneRobDead "Accept"
+
+
+doneStale "Okay"
+
+
+
+leave "Leave"
+
+
+musicOff "Turn music off"
+musicOn "Turn music on"
+
+safeMoveOn "Enable safe ENTER-confirmation for movement"
+safeMoveOff "Disable safe ENTER-confirmation for movement"
+
+safeMoveTip "Press ENTER to confirm this move"
+
+
+
+killedBy "You were killed by:"
+
+
+
+deathMessage "You died."
+
+leaveOutOfTime "The cops shoot you as you leave the house."
+
+startOver "Fresh Start"
+
+
+backpackDropLeave "You ditch your backpack as you run out the door."
+backpackDropVault "You empty your backpack to make room for the vault contents."
+
+
+robSuccess "%s##You stole $%d"
+
+robStuffSuccess "%s##You stole $%d and these items:"
+
+robOneItemSuccess "%s##You stole $%d and this item:"
+
+
+
+listFetchFailed "Failed to fetch house list"
+auctionListFetchFailed "Failed to fetch auction list"
+
+
+
+houseBeingRobbedOrEdited "Someone else is in that house.##You can't rob it now."
+houseReclaimed "That house was reclaimed by##the state after the owner died."
+
+houseChilling "Something about this house gives you the chills.##You can't bear to enter it."
+
+houseStale "You left the house due to inactivity."
+
+houseStaleDead "You died due to inactivity."
+houseStaleOutOfTime "You were killed by the cops."
+
+
+blueprintNotFound "Failed to find the requested blueprint."
+
+
+robberyLogNotFound "Failed to find the requested robbery log."
+
+
+
+nameYou "You"
+nameSelf "Self"
+
+startReplay "Play Tape"
+
+
+replayDescription "Security Tape:  %s robbed##%s for $%d"
+replayDescriptionBounty "Security Tape:  %s robbed##%s ($%d bounty)"
+
+
+step "Step"
+play "Play"
+faster "Faster"
+stop "Stop"
+restart "Restart"
+
+toggleVisibility "Visibility"
+
+toggleVisibilityTip "Toggle visibility shroud"
+
+
+playbackTag           "Playback %:"
+playbackToggleMessage "(Press % to hide)"
+playbackEndMessage    "(Press ESC to end)"
+
+
+enterDemoCode  "Enter a demo code:"
+checkingCode  "Checking demo permissions with server..."
+
+
+
+responseWarning "Cannot reach server.  Attempting retry %d..."
+
+
+err_webRequest   "ERROR:  Web request failed."
+err_codeFailed  "This demo code was denied by the server."
+err_serverVerifyFailed  "Response from the server could not be authenticated."
+
+err_badServerResponse  "ERROR:  Unexpected response from server"

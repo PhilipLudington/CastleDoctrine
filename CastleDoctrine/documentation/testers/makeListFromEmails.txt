@@ -1,0 +1,4 @@
+For a list of emails, one per line, turn into email,email pairs:
+
+M-x replace-regexp:
+Replace regexp   \w+\(\.\w+\)*@\w+\(\.\w+\)+   with:   \&,\&

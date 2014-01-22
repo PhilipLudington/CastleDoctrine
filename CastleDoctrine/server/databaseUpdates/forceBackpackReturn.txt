@@ -1,0 +1,30 @@
+ALTER TABLE castleServer_houses 
+ADD COLUMN backpack_value_estimate INT NOT NULL AFTER value_estimate, 
+ADD INDEX( backpack_value_estimate ), 
+ADD COLUMN last_owner_action_time DATETIME NOT NULL AFTER last_ping_time, 
+ADD INDEX( last_owner_action_time );
+
+
+ALTER TABLE castleServer_houses_owner_died 
+ADD COLUMN backpack_value_estimate INT NOT NULL AFTER value_estimate, 
+ADD INDEX( backpack_value_estimate ), 
+ADD COLUMN last_owner_action_time DATETIME NOT NULL AFTER last_ping_time, 
+ADD INDEX( last_owner_action_time );
+
+
+UPDATE castleServer_houses 
+SET last_owner_action_time = CURRENT_TIMESTAMP;
+
+
+
+# make sure that any empty backpack is tagged with value so that
+# it will be returned on next flush
+
+UPDATE castleServer_houses 
+SET backpack_value_estimate = 100 
+WHERE backpack_contents != "#";
+
+UPDATE castleServer_houses 
+SET backpack_value_estimate = 0 
+WHERE backpack_contents = "#";
+

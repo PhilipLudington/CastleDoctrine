@@ -1,0 +1,4 @@
+playerFacingAway
+mobile
+onTopOfPlayer
+darkHaloBehind

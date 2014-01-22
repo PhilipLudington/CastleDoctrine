@@ -1,0 +1,6 @@
+
+
+ALTER TABLE castleServer_users ADD lives_left INT NOT NULL AFTER character_name_history;
+
+
+UPDATE castleServer_users set lives_left = -1;

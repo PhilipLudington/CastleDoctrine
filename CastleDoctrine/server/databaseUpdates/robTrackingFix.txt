@@ -1,0 +1,28 @@
+
+// Updates users table to have a last_robbed_owner_id column, and copies
+// over IDs from live robberies.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_users ADD last_robbed_owner_id INT NOT NULL AFTER character_name_history;
+
+LOCK TABLE castleServer_users as u WRITE, castleServer_houses as h WRITE;
+
+
+UPDATE castleServer_users as u SET last_robbed_owner_id = (SELECT user_id FROM castleServer_houses as h WHERE h.robbing_user_id = u.user_id and h.rob_checkout=1 );
+
+COMMIT;
+
+UNLOCK TABLES;
+
+
+
+
+
+// utility calls:
+
+ALTER TABLE castleServer_users DROP last_robbed_owner_id;
+
+
+UPDATE castleServer_users SET last_robbed_owner_id = 0;

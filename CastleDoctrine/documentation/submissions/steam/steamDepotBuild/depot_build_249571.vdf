@@ -1,0 +1,21 @@
+// config for Windows Depot
+
+
+"DepotBuildConfig"
+{
+  "DepotID" "249571"
+  
+  "ContentRoot" "C:\cpp\CastleDoctrine\documentation\submissions\steam\steamDepotBuild\contentFiles\"
+
+	// include all files recursivley
+  "FileMapping"
+  {
+    "LocalPath" "windows\CastleDoctrine_v29\*"
+    "DepotPath" "."
+    "recursive" "1"
+  }
+
+	// but exclude all symbol files  
+	// (don't actually need to do this in my case, but leave as an example)
+  "FileExclusion" "*.pdb"
+}

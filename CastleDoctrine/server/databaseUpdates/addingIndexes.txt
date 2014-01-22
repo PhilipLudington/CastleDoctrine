@@ -1,0 +1,21 @@
+
+
+
+// add index tags for columns to match the latest CREATE statements
+
+
+
+ALTER TABLE castleServer_users ADD INDEX( email ), ADD INDEX( ticket_id );
+
+
+ALTER TABLE castleServer_houses ADD INDEX( last_ping_time ), ADD INDEX( edit_count ), ADD INDEX( value_estimate ), ADD INDEX( last_pay_check_time );
+
+ALTER TABLE castleServer_houses_owner_died ADD INDEX( last_ping_time ), ADD INDEX( edit_count ), ADD INDEX( value_estimate ), ADD INDEX( last_pay_check_time );
+
+
+ALTER TABLE castleServer_robbery_logs ADD INDEX( rob_time ), ADD INDEX( house_user_id );
+
+
+ALTER TABLE castleServer_auction ADD INDEX( start_time );
+
+

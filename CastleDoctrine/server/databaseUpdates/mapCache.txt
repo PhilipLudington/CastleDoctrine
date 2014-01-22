@@ -1,0 +1,95 @@
+
+
+
+
+# Before running these commands:
+# Must access  http://host/castleServer/server.php to generate new maps table.
+
+
+# house_end_map no longer needed in robbery logs
+# note that since every one of these is likely to be unique, they will
+# take up a lot of space
+
+ALTER TABLE castleServer_robbery_logs
+DROP COLUMN house_end_map;
+
+
+
+
+# First, add hash columns
+
+ALTER TABLE castleServer_houses 
+ADD COLUMN house_map_hash CHAR(40) NOT NULL AFTER house_map, 
+ADD INDEX( house_map_hash ), 
+ADD COLUMN self_test_house_map_hash CHAR(40) NOT NULL
+           AFTER self_test_house_map, 
+ADD INDEX( self_test_house_map_hash );
+
+
+# Generate hashes from maps to populate those colums
+
+UPDATE castleServer_houses SET
+house_map_hash = SHA1( house_map ),
+self_test_house_map_hash = SHA1( self_test_house_map );
+
+
+
+# Repeat for houses shadow table
+
+ALTER TABLE castleServer_houses_owner_died 
+ADD COLUMN house_map_hash CHAR(40) NOT NULL AFTER house_map, 
+ADD INDEX( house_map_hash ), 
+ADD COLUMN self_test_house_map_hash CHAR(40) NOT NULL
+           AFTER self_test_house_map, 
+ADD INDEX( self_test_house_map_hash );
+
+UPDATE castleServer_houses_owner_died SET 
+house_map_hash = SHA1( house_map ), 
+self_test_house_map_hash = SHA1( self_test_house_map );
+
+
+
+# Add hash columns and populate them for robbery logs
+
+ALTER TABLE castleServer_robbery_logs
+ADD COLUMN house_start_map_hash CHAR(40) NOT NULL AFTER house_start_map, 
+ADD INDEX( house_start_map_hash );
+
+UPDATE castleServer_robbery_logs SET 
+house_start_map_hash = SHA1( house_start_map );
+
+
+
+
+# Insert all maps and their hashes into the new maps table
+
+REPLACE into castleServer_maps (house_map_hash, last_insert_date, house_map ) SELECT house_map_hash, CURRENT_TIMESTAMP, house_map from castleServer_houses; 
+
+REPLACE into castleServer_maps (house_map_hash, last_insert_date, house_map ) SELECT self_test_house_map_hash, CURRENT_TIMESTAMP, self_test_house_map from castleServer_houses; 
+
+
+REPLACE into castleServer_maps (house_map_hash, last_insert_date, house_map ) SELECT house_map_hash, CURRENT_TIMESTAMP, house_map from castleServer_houses_owner_died; 
+
+REPLACE into castleServer_maps (house_map_hash, last_insert_date, house_map ) SELECT self_test_house_map_hash, CURRENT_TIMESTAMP, self_test_house_map from castleServer_houses_owner_died;
+
+REPLACE into castleServer_maps (house_map_hash, last_insert_date, house_map ) SELECT house_start_map_hash, CURRENT_TIMESTAMP, house_start_map from castleServer_robbery_logs; 
+
+
+
+
+# Finally, and this is the dangerous part:
+# Drop all the old map colums.
+
+
+ALTER TABLE castleServer_houses 
+DROP COLUMN house_map,  
+DROP COLUMN self_test_house_map;
+
+ALTER TABLE castleServer_houses_owner_died 
+DROP COLUMN house_map,  
+DROP COLUMN self_test_house_map;
+
+
+
+ALTER TABLE castleServer_robbery_logs
+DROP COLUMN house_start_map;

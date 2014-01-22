@@ -1,0 +1,4 @@
+ALTER TABLE castleServer_houses ADD last_auction_price INT NOT NULL AFTER gallery_contents;
+
+
+ALTER TABLE castleServer_houses_owner_died ADD last_auction_price INT NOT NULL AFTER gallery_contents;

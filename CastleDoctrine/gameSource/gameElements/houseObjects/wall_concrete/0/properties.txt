@@ -1,0 +1,5 @@
+visionBlocking
+blocking
+shadowMaking
+wall
+structural

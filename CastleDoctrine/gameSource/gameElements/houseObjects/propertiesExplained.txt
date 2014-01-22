@@ -1,0 +1,191 @@
+This file describes various object properties and how they work in the game
+engine.
+
+
+permanent
+:: immune to editing
+
+
+mandatory
+:: if removed during editing, must be replaced before editing done
+
+
+family
+:: must have a valid, obstacle-free path to the exit
+
+
+deadFamily
+:: state that family goes into when dead
+
+
+wife
+:: %s in name replaced with wife's name
+
+
+son
+:: %s in name replaced with son's name
+
+
+daughter
+:: %s in name replaced with daughter's name
+
+
+blocking
+:: blocks movement of player and mobiles
+
+
+visionBlocking
+:: blocks line-of-sight vision (for computing shroud during robbery)
+
+
+shadowMaking
+:: contributes to shadow footprint under walls
+
+
+underLayerShaded
+:: force _under.tga sprite layer to have darkest shading gradation (only
+   if there is no under_shadeMap.tga sprite file
+
+
+wall
+:: first-tier orientation effects (for stuff like windows and doors that
+   change orientation based on the objects around them).  If walls are adjacent
+   to these objects, they orient to walls first.
+
+
+structural
+:: second-tier orientation effects .  Objects orient based on other structural
+   objects, but are dominated by walls first.  For example, if a window
+   is sandwiched between two walls on W and E sides, and two doors on N and S
+   sides, it will orient to span W-E between the walls.
+
+
+neverFade
+:: Most objects fade out to transparent when under the visibility shroud.
+   neverFade overrides this behavior, always drawing the object at full 
+   opacity.
+
+
+deadly
+:: kills player if player on same grid space as this object.
+
+
+deadlyAdjacent
+:: kills player if player adjacent to this object's grid space.
+
+
+stuck
+:: object's state does not reset back to 0 after owner returns and edits/tests
+   the house.  Owner must pay to replace the object.
+
+
+noAutoRevert
+:: object's state does not reset back to 0 after owner returns and edits/tests
+   the house.  Owner can replace the object for free.
+
+
+powered
+:: object generates power for neighboring cells.
+
+
+conductive
+:: object accepts power from neighboring objects to power itself and passes 
+   power to neighboring cells in all four directions
+
+
+conductiveLeftToRight
+:: object accepts power from neighboring objects to power itself and passes 
+   power between the left and right sides.
+
+
+conductiveTopToBottom
+:: object accepts power from neighboring objects to power itself and passes
+   power between the top and bottom sides.  Note that an object can be both 
+   LeftRight and TopBottom conductive WITHOUT being fully conductive.
+   Thus, an object would not be LeftTop conductive, etc.
+
+
+conductiveInternal
+:: object accepts power from neighboring objects to power itself but does not
+   pass that power on to any neighbor cells.
+
+
+mobile
+:: object exists in the mobile layer.  Can co-occupy cells with family members
+   and non-mobile objects.
+
+
+sleeping
+:: a mobile object that is not stuck (will reset after next edit) but will not
+   jump back to its original position.
+
+
+forceUnderShadows
+:: forces objects that are normally above wall-footprint shadows (like player 
+   and mobiles) to be drawn under the shadows.
+
+
+noDropShadow
+:: omits the drop shadow from an object that would otherwise have one (like 
+   player, family, and mobile objects).
+
+
+darkHaloBehind
+:: draw a dark border around the object to visually offset it.
+
+
+mobileBlocking
+:: mobiles cannot cross this object.
+
+
+playerSeeking
+:: (for mobiles) tries to move closer to player.
+
+
+playerAvoiding
+:: (for mobiles) tries to move away from player.
+
+
+playerFacing
+:: (for four-orientation objects) faces the player.
+
+
+playerFacingAway
+:: (for four-orientation objects) faces the player.
+
+
+interactingWithPlayer
+:: mark states that don't make sense without the player present at that tile.
+   Used for states that would otherwise be preserved for the owner to see
+   post-robbery.  For example, a pit bull in it's mauling-the-robber stance.
+   The robber is no longer present when the owner sees the post-robbery state
+   of the house.
+
+
+wifeOwns
+:: %s in the object name is replaced with the wife's name in possessive form.
+
+
+onTopOfPlayer
+:: for an object that is usually drawn beneath the player's sprite, drawn it
+   on top instead.
+
+
+thinShroud
+:: for a wall edge, thins the visibiliy shroud by one sub-block, making this
+   wall always shrouded as if the player was standing next to it (where the
+   shroud is pushed back slightly).  Useful for walls that have internal
+   details that need to be more visible.
+
+
+blockSubInfo
+:: prevents this object's state from using any subInfo.txt file that is
+   present.  Forces this object's state tool tip to match the main info.txt
+   tip.
+
+
+signedSprite
+:: indicates that a signature must be present for this state's main sprite,
+   preventing the sprite from being modded without recompiling the game.
+   Most sprites can be modded without compromising the core game rules, but
+   some cannot.

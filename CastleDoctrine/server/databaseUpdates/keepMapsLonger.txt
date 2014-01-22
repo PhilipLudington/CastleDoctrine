@@ -1,0 +1,12 @@
+
+
+ALTER TABLE castleServer_maps CHANGE 
+last_insert_date last_touch_date DATETIME NOT NULL;
+
+
+ALTER TABLE castleServer_maps ADD 
+delete_flag TINYINT NOT NULL AFTER last_touch_date, ADD INDEX( delete_flag );
+
+
+UPDATE castleServer_maps SET delete_flag = 0;
+

@@ -1,0 +1,16 @@
+
+
+ALTER TABLE castleServer_ignore_houses 
+ADD COLUMN started TINYINT NOT NULL DEFAULT 1 AFTER house_user_id;
+
+ALTER TABLE castleServer_ignore_houses 
+ADD COLUMN forced TINYINT NOT NULL DEFAULT 0 AFTER started;
+
+ALTER TABLE castleServer_ignore_houses 
+ADD COLUMN forced_pending TINYINT NOT NULL DEFAULT 0 AFTER forced;
+
+ALTER TABLE castleServer_ignore_houses 
+ADD COLUMN forced_start_time DATETIME NOT NULL AFTER forced_pending;
+
+UPDATE castleServer_ignore_houses
+SET started = 1, forced = 0, forced_pending = 0, forced_start_time = CURRENT_TIMESTAMP; 

@@ -1,0 +1,70 @@
+This document explains how to connect custom source builds to the main server.
+
+Connecting to a server requires that you equip your client with the same
+shared secret that the server is using.  The client source code ships with a
+default secret that matches the secret present in the server source files.
+Thus, you can connect to your own unmodified server without changing anything.
+
+
+If you want to connect your custom-compiled client to the main server, however,
+you will need to change the client's secret before building.
+
+
+The secret can be changed by editing the following file:
+
+CastleDoctrine/gameSource/sharedServerSecret.cpp
+
+
+Okay, easy enough, but what shared secret is the main server expecting?
+
+
+First, please be aware of what you are about to do:  connect a client that you
+have compiled yourself to the live server where the vast majority of players
+are playing with unmodified binaries that were supplied directly by me.
+Reflect for a moment about all the sweat and tears that each of those players
+have poured into their houses.  While it would be a major accomplishment to
+rob those houses through your legitimate skills in the game, it would be
+no accomplishment at all to rob those houses through your skills as a hacker.
+After all, I'm handing you the source code.
+
+Yes, while most security and cheating issues have been addressed, the server 
+still trusts the client with the full map during every robbery.  Most of that
+map is meant to be hidden from the player.  Your custom-compiled client should 
+keep it that way.
+
+This is a game made entirely, from scratch, by one person over two years.  I'm
+running this beast on a shoestring budget server.  The game protocol is
+asynchronous:  you check a house out from the server, play in that house
+(either editing it if it's yours, or robbing it if not), and then check the
+house back in to the server.  The server then verifies that everything you
+claim to have done is legitimate.  But what you actually did can be quite
+different from what you claim to have done.  In an asynchronous model, which
+has enormous advantages in every other way, there's simply no way around this.
+
+Peeking at the map or giving yourself an "undo" button during robbery is
+totally possible.  But please don't connect to the main server with a client
+that does this.
+
+Okay... so you read all that, right?  Here's the secret that the main server
+is expecting:
+
+
+"Please do not use this secret string to connect unfairly modded clients to the main server.  Keep in mind that this is an indie, open-source game made entirely by one person.  I am trusting you to do the right thing.  --Jason"
+
+
+That's all one long line, with one space after each word and two spaces after
+each period.
+
+And why such a weird secret string?  Well, it shows up in the binary itself, so
+anyone hacking with a hex editor will encounter it and read it.
+
+This is not "security by obscurity" but rather "security by awareness."  No
+one can hack the game by accident without realizing what they are doing
+and what my wishes are.
+
+
+
+
+Jason Rohrer
+Davis, California
+January 2014

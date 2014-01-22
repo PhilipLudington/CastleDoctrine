@@ -1,0 +1,7 @@
+
+
+7z a -tzip CastleDoctrine_%version%_Windows.zip CastleDoctrine_%version% -r
+
+makesfx.exe /zip="CastleDoctrine_%version%_Windows.zip" /sfx="CastleDoctrine_%version%_Windows.exe" /title="The Castle Doctrine %version%" /website="http://thecastledoctrine.net" /intro="This will extract the game." /defaultpath="$curdir$" /icon="..\win32\icon_installer.ico"
+
+pause

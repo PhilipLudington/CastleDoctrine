@@ -1,0 +1,6 @@
+ALTER TABLE castleServer_robbery_logs 
+ADD COLUMN num_moves INT NOT NULL AFTER move_list;
+
+UPDATE castleServer_robbery_logs
+SET num_moves = 
+( LENGTH( move_list ) - LENGTH( REPLACE( move_list, "#", "" ) ) + 1 ) ; 

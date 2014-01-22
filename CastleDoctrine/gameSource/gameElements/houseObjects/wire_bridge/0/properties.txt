@@ -1,0 +1,2 @@
+conductiveLeftToRight
+conductiveTopToBottom

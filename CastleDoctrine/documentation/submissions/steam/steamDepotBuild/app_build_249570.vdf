@@ -1,0 +1,17 @@
+"appbuild"
+{
+	"appid"	"249570"
+	"desc" "The Castle Doctrine v29" // description for this build
+	"buildoutput" "output\" // build output folder for .log, .csm & .csd files, relative to location of this file
+	"contentroot" "C:\cpp\CastleDoctrine\documentation\submissions\steam\steamDepotBuild\contentFiles\" // root content folder, relative to location of this file
+	"setlive"	"" // branch to set live after successful build, non if empty
+	"preview" "0" // to enable preview builds
+	"local"	""	// set to flie path of local content server 
+	
+	"depots"
+	{
+		"249571" "depot_build_249571.vdf"
+		"249572" "depot_build_249572.vdf"
+		"249573" "depot_build_249573.vdf"
+	}
+}

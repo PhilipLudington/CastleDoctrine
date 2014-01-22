@@ -1,0 +1,29 @@
+#!/bin/sh
+
+if [ $# -lt 1 ] ; then
+   echo "Usage: $0 release_name"
+   exit 1
+fi
+
+
+./makeSourceBundle $1
+
+sourceBundleDir="CastleDoctrine_$1_UnixSource"
+
+cd $sourceBundleDir
+./runToBuild 1
+
+cd ..
+
+buildDir="CastleDoctrine_$1"
+finalTarball="CastleDoctrine_$1_Linux.tar.gz"
+
+rm -rf $buildDir $buildDir_Linux.tar.gz
+
+mkdir $buildDir
+
+cd $sourceBundleDir
+cp -r CastleDoctrineApp gameElements graphics languages language.txt no_copyright.txt Readme.txt settings ../$buildDir
+
+cd ..
+tar czf $finalTarball $buildDir

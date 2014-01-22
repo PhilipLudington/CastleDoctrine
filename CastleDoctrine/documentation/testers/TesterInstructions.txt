@@ -1,0 +1,19 @@
+== Getting the Game ==
+
+Download instructions should be arriving to each of you shortly in a private email.
+
+Your Download Code will be displayed on your download page.  Make sure to COPY it to the clipboard so that you can PASTE it into the game upon first launch.
+
+
+
+== Recorded Games ==
+
+Every time you play the game, your whole experience is saved in the "recordedGames" folder as a compact text file.  This is extremely useful for testing and debugging:
+
+1) If you encounter what seems like a bug or a glitch, quit the game (ESC) and send me the last recorded game file.  I can watch your game on my end, which will replay the bad behavior for me and help me fix the problem.
+
+2) If the game crashes, send me the last recorded game file along with a description of what happened right before the crash.  I can hopefully reproduce the crash on my end.
+
+3) If there's some other issue that you have with the game---balancing or difficulty or general confusion---you can potentially send a recorded game that illustrates the problem along with your report.
+
+4) If you type messages on the PAUSE screen, I'll see those in your recorded game too.  You can use this feature to document your thoughts as you play.

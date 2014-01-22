@@ -1,0 +1,40 @@
+// Updates houses table to have a bounty column.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses ADD bounty INT NOT NULL AFTER wife_paid_total;
+
+UPDATE castleServer_houses set bounty = '500';
+
+
+ALTER TABLE castleServer_houses_owner_died ADD bounty INT NOT NULL AFTER wife_paid_total;
+
+UPDATE castleServer_houses_owner_died set bounty = '500';
+
+
+
+
+
+
+ALTER TABLE castleServer_server_stats ADD bounties_accumulated INT NOT NULL DEFAULT 0 AFTER robbery_suicides;
+
+UPDATE castleServer_server_stats set bounties_accumulated = '0';
+
+
+ALTER TABLE castleServer_server_stats ADD bounties_paid INT NOT NULL DEFAULT 0 AFTER bounties_accumulated;
+
+UPDATE castleServer_server_stats set bounties_paid = '0';
+
+
+
+
+
+ALTER TABLE castleServer_robbery_logs ADD robber_died TINYINT NOT NULL AFTER value_estimate;
+
+UPDATE castleServer_robbery_logs set robber_died = '0';
+
+
+
+
+COMMIT;

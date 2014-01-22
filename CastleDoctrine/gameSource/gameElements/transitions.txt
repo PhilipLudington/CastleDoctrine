@@ -1,0 +1,360 @@
+
+
+mobile   #   toggle_switch:1   =>  2
+mobile   #   toggle_switch_prepressed:1   =>  2
+mobile   #   sticking_switch:1   =>  2
+mobile   #   rotary_toggle_switch:1   =>  2
+
+mobile   #   toggle_switch:2   =>  1
+mobile   #   toggle_switch_prepressed:2   =>  1
+mobile   #   rotary_toggle_switch:2   =>  1
+
+
+mobile   #   power_door:1  => 3
+noMobile #   power_door:3  => 1
+
+
+
+player   #   door_push   =>  2
+
+pitbull     #   door_push   =>  2
+chihuahua   #   door_push   =>  2
+cat         #   door_push   =>  2
+
+pitbull     #   power_door:1  =>  3
+chihuahua   #   power_door:1  =>  3
+cat         #   power_door:1  =>  3
+pitbull     #   power_door:2  =>  3
+chihuahua   #   power_door:2  =>  3
+cat         #   power_door:2  =>  3
+
+
+
+visible # pitbull:1 => 11
+visible # chihuahua:1 => 11
+visible # cat:1 => 11
+
+
+
+floor_electric:2 # pitbull => 3
+floor_electric:2 # chihuahua => 3
+floor_electric:2 # cat => 3
+floor_electric:2 # player => 3
+
+
+pit:1 # pitbull => 2
+pit:1 # chihuahua => 2
+pit:1 # cat => 2
+pit:1 # player => 2
+
+
+trapdoor:1 # pitbull => 2
+trapdoor:1 # chihuahua => 2
+trapdoor:1 # cat => 2
+trapdoor:1 # player => 2
+
+trapdoor:2 # pitbull:2 => 20
+trapdoor:2 # chihuahua:2 => 20
+trapdoor:2 # cat:2 => 20
+trapdoor:2 # player:2 => 20
+
+trapdoor:3 # pitbull:2 => 23
+trapdoor:3 # chihuahua:2 => 23
+trapdoor:3 # cat:2 => 23
+
+pit:3 # pitbull:2 => 23
+pit:3 # chihuahua:2 => 23
+pit:3 # cat:2 => 23
+
+trapdoor:3 # pitbull:20 => 23
+trapdoor:3 # chihuahua:20 => 23
+trapdoor:3 # cat:20 => 23
+
+trapdoor:3 # pitbull:24 => 23
+
+trapdoor:4 # pitbull:20 => 24
+trapdoor:4 # chihuahua:2 => 20
+trapdoor:4 # cat:2 => 20
+
+trapdoor:4 # pitbull:23 => 24
+trapdoor:4 # chihuahua:23 => 20
+trapdoor:4 # cat:23 => 20
+
+
+ladder # trapdoor:1 => 3
+ladder # trapdoor:2 => 4
+
+ladder # pit:1 => 3
+
+
+
+player # pitbull:11 => 4
+
+pitbull:4 # player => 4
+
+
+
+power     #   wire:1   =>  2
+noPower   #   wire:2   =>  1
+
+power     #   wire_vertical:1   =>  2
+noPower   #   wire_vertical:2   =>  1
+
+power     #   wire_horizontal:1   =>  2
+noPower   #   wire_horizontal:2   =>  1
+
+
+voltageDetector # wire:1 => 3
+voltageDetector # wire:2 => 4
+voltageDetector # wire_vertical:1 => 3
+voltageDetector # wire_vertical:2 => 4
+voltageDetector # wire_horizontal:1 => 3
+voltageDetector # wire_horizontal:2 => 4
+
+wireCutters # wire => 5
+wireCutters # wire_bridge => 2
+wireCutters # wire_vertical => 5
+wireCutters # wire_horizontal => 5
+
+wireCutters # floor_electric:1 => 4
+
+
+power     #   wire:3   =>  4
+noPower   #   wire:4   =>  3
+
+power     #   wire_vertical:3   =>  4
+noPower   #   wire_vertical:4   =>  3
+
+power     #   wire_horizontal:3   =>  4
+noPower   #   wire_horizontal:4   =>  3
+
+
+power     #   wall_wood_wired:1   =>  2
+noPower   #   wall_wood_wired:2   =>  1
+
+
+
+power   #   power_door:1   =>  2
+
+noPower   #   power_door:2   =>  1
+
+
+
+power   #   trapdoor:1   =>  2
+
+noPower   #   trapdoor:2   =>  1
+
+
+power   #   trapdoor:3   =>  4
+
+noPower   #   trapdoor:4   =>  3
+
+
+
+doorstop # power_door:1 => 4
+
+crowbar # power_door:2 => 5
+crowbar # door_push => 2
+brick # door_push => 2
+
+
+power   #   floor_electric:1   =>  2
+
+noPower   #   floor_electric:2   =>  1
+
+
+power   #   indicator_light:1   =>  2
+
+noPower   #   indicator_light:2   =>  1
+
+
+power   #   indicator_light_non_conducting:1   =>  2
+
+noPower   #   indicator_light_non_conducting:2   =>  1
+
+
+
+
+powerNorth   #   power_relay:1   =>  2
+
+noPowerNorth   #   power_relay:2   =>  1
+
+
+powerNorth   #   power_relay_inverted:1   =>  2
+
+noPowerNorth   #   power_relay_inverted:2   =>  1
+
+
+
+saw     #   wall_wood:1  =>  2
+torch   #   wall_wood:1  =>  3
+
+torch   #   wall_metal:1  =>  2
+
+torch   #   window:1 => 2
+
+saw     #   wall_wood_wired:1  =>  3
+saw     #   wall_wood_wired:2  =>  3
+torch   #   wall_wood_wired:1  =>  4
+torch   #   wall_wood_wired:2  =>  4
+
+ammoniumNitrateBomb # wall_concrete:1 => 4
+ammoniumNitrateBomb # window:1 => 3
+ammoniumNitrateBomb # wall_wood:1 => 4
+ammoniumNitrateBomb # wall_wood_wired:1 => 5
+ammoniumNitrateBomb # wall_wood_wired:2 => 5
+
+
+gun  # pitbull:11 => 5
+gun  # chihuahua:11 => 5
+gun  # cat:11 => 5
+
+druggedMeat  # pitbull:11 => 6
+druggedMeat  # chihuahua:11 => 6
+
+gun  # pitbull:6   => 5
+gun  # chihuahua:6 => 5
+
+
+
+
+
+player # pitbull:6   => 4
+player # chihuahua:6 => 1
+
+
+brick # window:1 => 3
+crowbar # window:1 => 3
+club # window:1 => 3
+
+brick   # indicator_light => 3
+crowbar # indicator_light => 3
+club    # indicator_light => 3
+
+brick   # indicator_light_non_conducting => 3
+crowbar # indicator_light_non_conducting => 3
+club    # indicator_light_non_conducting => 3
+
+
+
+brick   #   toggle_switch:1   =>  2
+brick   #   toggle_switch_prepressed:1   =>  2
+brick   #   sticking_switch:1   =>  2
+brick   #   rotary_toggle_switch:1   =>  2
+
+brick   #   toggle_switch:2   =>  1
+brick   #   toggle_switch_prepressed:2   =>  1
+brick   #   rotary_toggle_switch:2   =>  1
+
+
+crowbar # power_relay => 3
+crowbar # power_relay_inverted => 3
+crowbar # sticking_switch:2 => 3
+
+
+water # power_source => 2
+water # floor_electric:2 => 3
+
+
+
+crowbar  # pitbull:11 => 7
+crowbar  # chihuahua:11 => 7
+crowbar  # cat:11 => 7
+
+club  # pitbull:11 => 7
+club  # chihuahua:11 => 7
+club  # cat:11 => 7
+
+brick  # chihuahua:11 => 7
+brick  # cat:11 => 7
+
+
+
+gun # wife:1 => 5
+gun # wife2:1 => 5
+gun # wife3:1 => 5
+gun # wife4:1 => 5
+
+gun # wife:10 => 5
+gun # wife2:10 => 5
+gun # wife3:10 => 5
+gun # wife4:10 => 5
+
+gun # son:1 => 5
+gun # son2:1 => 5
+gun # son3:1 => 5
+gun # son4:1 => 5
+
+gun # daughter:1 => 5
+gun # daughter2:1 => 5
+gun # daughter3:1 => 5
+gun # daughter4:1 => 5
+
+
+crowbar # wife:1 => 7
+crowbar # wife2:1 => 7
+crowbar # wife3:1 => 7
+crowbar # wife4:1 => 7
+
+crowbar # son:1 => 7
+crowbar # son2:1 => 7
+crowbar # son3:1 => 7
+crowbar # son4:1 => 7
+
+crowbar # daughter:1 => 7
+crowbar # daughter2:1 => 7
+crowbar # daughter3:1 => 7
+crowbar # daughter4:1 => 7
+
+
+club # wife:1 => 7
+club # wife2:1 => 7
+club # wife3:1 => 7
+club # wife4:1 => 7
+
+club # son:1 => 7
+club # son2:1 => 7
+club # son3:1 => 7
+club # son4:1 => 7
+
+club # daughter:1 => 7
+club # daughter2:1 => 7
+club # daughter3:1 => 7
+club # daughter4:1 => 7
+
+
+
+wife_shotgun # wife:1  => 10
+wife_shotgun # wife2:1 => 10
+wife_shotgun # wife3:1 => 10
+wife_shotgun # wife4:1 => 10
+
+
+wife:1  # wife_shotgun:1  => 2
+wife2:1 # wife_shotgun:1 => 2
+wife3:1 # wife_shotgun:1 => 2
+wife4:1 # wife_shotgun:1 => 2
+
+
+wife:10  # player:1 => 5
+wife2:10 # player:1 => 5
+wife3:10 # player:1 => 5
+wife4:10 # player:1 => 5
+
+
+
+
+wife  # panic_button:1  => 2
+wife2 # panic_button:1  => 2
+wife3 # panic_button:1  => 2
+wife4 # panic_button:1  => 2
+
+son  # panic_button:1  => 2
+son2 # panic_button:1  => 2
+son3 # panic_button:1  => 2
+son4 # panic_button:1  => 2
+
+daughter  # panic_button:1  => 2
+daughter2 # panic_button:1  => 2
+daughter3 # panic_button:1  => 2
+daughter4 # panic_button:1  => 2

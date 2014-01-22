@@ -1,0 +1,174 @@
+This a quick guide to help you set up and run your own server for 
+The Castle Doctrine.  Experience with web server administration and installing
+PHP/MySQL scripts is assumed.  I don't explain how to create a MySQL database,
+for example (ask your web hosting company for help if you need it).
+
+
+
+
+1.  Get a ticketServer up and running.
+
+This controls access to your server.  You give the players tickets to let
+them play on your server.  No ticket, no access.
+
+The PHP for the ticketServer is in:
+
+minorGems/game/ticketServer/
+
+
+A. Set up a MySQL database and database user, and edit settings.php to point to
+   that database.
+
+B. Edit various other settings in settings.php as you see fit.  In particular,
+   be sure to replace the various "secrets" (hex strings) with your own
+   unguessable values (try running md5 or sha1sums of some random typing, plus
+   some randomly-chosen files).
+
+C. After you change $passwordHashingPepper, pick an admin password and go
+   here to generate a hash of it:
+
+   http://myserver/ticketServer/passwordHashUtility.php
+
+   Paste that generated hash into the $accessPasswords array.  You can
+   specify multiple hashes there if you want multiple admin passwords.
+
+D. You probably want to turn Yubikey support off (unless you have Yubikeys,
+   which of course you should).
+
+E. You should be ready for web-based database table setup now.  Go to:
+
+   http://myserver/ticketServer/server.php
+
+F. Assuming that all the tables were generated, your ticket server should
+   be ready for you to login.  Go to:
+
+   http://myserver/ticketServer/
+
+G. Log in.  Create tickets for your users.  A user will need both their
+   email address and ticket ID to log into your game server.  You probably
+   DON'T want to send out the ticketServer's automated emails, because
+   those are about how to download the game itself (which you're probably
+   not hosting on your ticketServer).
+
+
+
+
+
+
+2. Get the game server up and running.
+
+The PHP for the game server is in (where this How To Guide is):
+
+CastleDoctrine/server/
+
+
+A. Follow exactly the same steps (A through E) that you followed for setting
+   up the ticketServer (but this time, apply those steps to the game server).
+
+
+F. In settings.php for the game server, make sure that $ticketServerURL
+   points to where you installed your ticket server (can be on separate
+   physical servers if you want).
+
+   Also, make sure that $sharedEncryptionSecret is the SAME as the one in
+   ticketServer/settings.php
+
+   This URL and shared secret will be used to verify that ticket IDs are
+   correct when players log into the game server.
+
+G. Assuming that all is well, your game server should be ready for you to 
+   login.  Go to:
+
+   http://myserver/server/
+
+H. Log in.  No users should have houses showing up yet, but they will soon.
+
+
+
+
+
+
+3. Install the reflector (CastleDoctrine/reflector) and edit server.php
+   to point to your server.
+
+
+
+
+4. Tell your users to edit settings/reflectorURL.ini in their game to point
+   at your reflector.  That will bounce them to your server.
+
+
+
+5. Email ticket IDs to your users.  
+
+
+6. When a player logs in for the first time, the ticketServer will be checked
+   to verify their access, and then a house will be created (and show up
+   in your admin view) on the game server.
+
+
+7. Users that you mark as admins will get extra features enabled in their
+   game (like being able to replay all robberies, and being able to watch
+   other players' self-test replays).  But they WON'T be able to log into
+   the web-based admin view (unless you give them a password).
+
+
+8. (Optional but recommended).  Edit checkForFlush.sh to point to your server.
+   Set up a cron job that calls this script on a regular interval.
+   Suggested interval:  every minute.  Edit settings.php for your game server
+   and set $flushDuringClientCalls to false.  This will remove the load for
+   server flushes from client calls, reducing the maximum response time for
+   a client.
+
+
+
+9. (Optional but highly recommended).  The server-side cheat prevention uses a
+   server-side headless game client to simulate player-submitted robberies and
+   check them for validity.  Using this feature requires that you be able to
+   compile and run C programs on your server.  Extract the source archive on
+   your server and then:
+
+A. Inside the source folder:
+
+   cd CastleDoctrine
+   ./configure
+   cd gameSource
+   ./makeHeadlessGame.sh
+
+B. If the build ran correctly, CastleDoctrineHeadless should be created.
+
+C. Then run:
+
+   ./makeHeadlessGameFolder.sh
+
+D. Copy the resulting headlessFolder wherever you want.
+
+E. Edit settings/simulatorServerPort.ini and settings/simulatorServerPassword.ini
+
+F. (Optional):  Make several copies of the headlessGame folder, and set
+   different simulatorServerPorts in each one so that you can run multiple
+   headless clients for redundancy.
+
+G. Launch each headless client as a daemon with a command like:
+
+   nohup ./CastleDoctrineHeadless > headlessLog.txt 2>&1 &
+
+H. Edit settings.php to enable $checkRobberiesWithHeadlessClient, and set the
+   port number(s) for the client(s) in $headlessClientPorts.
+
+
+
+
+
+Why is this game server split into three parts?
+
+For scalability, the reflector can redirect different users
+to different servers according to their email address.  This isn't implemented
+yet, but can easily be implemented if needed (see reflector/protocol.txt).
+
+ticketServer was code that I've already used for two other games, so I wanted
+to keep that separate (and central:  even if users are playing on different
+servers, they can buy the game through one central server).  It made sense
+to also use it as a point of server access control (as well as serving up 
+downloads of the game).
+

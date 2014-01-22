@@ -1,0 +1,16 @@
+
+// Updates houses table to have a last_owner_visit_time column.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses ADD last_owner_visit_time DATETIME NOT NULL AFTER last_ping_time;
+
+UPDATE castleServer_houses set last_owner_visit_time = last_ping_time;
+
+
+ALTER TABLE castleServer_houses_owner_died ADD last_owner_visit_time DATETIME NOT NULL AFTER last_ping_time;
+
+UPDATE castleServer_houses_owner_died set last_owner_visit_time = last_ping_time;
+
+COMMIT;

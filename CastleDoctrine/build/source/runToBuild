@@ -1,0 +1,58 @@
+#!/bin/bash
+
+#
+# Modification History
+#
+# 2010-April-2        Andy Sommerville
+# - Added a few "|| exit 1" to terminate as soon as error occurs.
+# - Read menu choice from argv[1].
+# - Added "-p" to mkdir to suppress "already exists" message.
+# - Added automatic backup of "resourceCache". (wish I'd thought of that a few minutes ago....)
+#
+# 2007-November-12    Jason Rohrer
+# Copied from Cultivation.
+#
+
+
+cd CastleDoctrine
+chmod u+x ./configure
+./configure $@ || exit 1
+
+
+
+
+cd gameSource
+
+
+echo "Building CastleDoctrine..."
+
+make || exit 1
+
+
+
+cd ../..
+
+mkdir -p graphics
+mkdir -p gameElements
+mkdir -p settings
+mkdir -p languages
+
+
+
+
+cp CastleDoctrine/gameSource/CastleDoctrine ./CastleDoctrineApp
+cp CastleDoctrine/documentation/Readme.txt .
+cp CastleDoctrine/no_copyright.txt .
+cp CastleDoctrine/gameSource/graphics/* ./graphics
+cp CastleDoctrine/gameSource/settings/* ./settings
+cp CastleDoctrine/gameSource/languages/* ./languages
+cp CastleDoctrine/gameSource/language.txt ./
+
+cp -r CastleDoctrine/gameSource/gameElements/* ./gameElements
+
+
+echo "Run CastleDoctrineApp to play."
+
+
+
+

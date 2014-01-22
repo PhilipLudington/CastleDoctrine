@@ -1,0 +1,715 @@
+All returns are whitespace-delimited.
+
+
+
+Most calls can return 'DENIED' on failure
+
+Some calls can return 'SHUTDOWN' when the server has been switched into
+shutdown mode.  After this, subsequent calls to server may be unsafe in terms
+of houses being lost, etc.  Client should stop immediately (and a client that
+gets a SHUTDOWN response on startup should stop and tell user to try again
+later).
+
+Some calls can also return 'PERMADEAD' when the user is permanently dead and
+has no fresh starts left.  No additional actions are possible for this user
+on the server.  Client should immediately inform user of this condition.
+
+
+
+=== Call:
+server.php?action=check_user&email=[signup email address]
+
+Returns:
+requiredVersionNumber
+userID
+sequenceNumber
+adminStatus
+OK
+
+Where:
+requiredVersionNumber = client version number compatible with this server
+userID = unique user ID number
+sequenceNumber = sequence number for hmac-sha1 secure hashing of download keys
+                 to sign future transactions.  Any transactions using
+                 lower sequence numbers will be denied as stale replays. 
+adminStatus = 0 or 1
+
+
+
+== General Note:
+To verify the identity of the user making each transaction, a hash of
+that user's original download ticket ID is included with the transaction call.
+That hash is constructed in the following way:
+
+  HMAC_SHA1( download_ticket_id, 
+             sequence_number . client_version_number . shared_secret )
+
+Where the two inputs are the download ticket ID (hex-encoded and all caps, with
+hyphens removed) and the ascii, base-10 representation of the sequence number,
+concatonated with the ascii, base-10 representation of the version number, and
+finally concatonated with the shared secret string known both to the server and
+the client.
+
+Each transaction updates the sequence number associated with the user on
+the server.  Each subsequent transaction must use a new sequence number to
+thwart replay attacks.
+
+Thus, the ticket ID is never sent from the client to the server, yet the
+server can verify that the client making the transaction is indeed in 
+possession of the ticket ID (which only one person in the world should have),
+as well as the proper version number and the proper shared secret.
+
+
+
+
+
+=== Call:
+server.php?action=check_hmac&user_id=[id number]
+                            &sequence_number=[number]
+                            &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+OK
+
+
+
+
+
+=== Call:
+server.php?action=start_edit_house&user_id=[id number]
+                                  &sequence_number=[number]
+                                  &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+houseMap
+vault_contents
+backpack_contents
+gallery_contents
+price_list
+current_balance
+must_self_test
+music_seed
+wife_name
+son_name
+daughter_name
+payment_count
+you_paid_total
+wife_paid_total
+number_of_tapes
+OK
+
+Where:
+houseMap = ASCII string representing the house layout, like:
+
+object_id#object_id#object_id#object_id
+
+OR
+
+object_id:state#object_id:state#object_id#object_id
+
+If ":state" not present, then default state is implied
+If ":state" includes "!" at the end, that marks a stuck state.
+Example:  100:2!#10:3!#5#3:0
+
+Cells are separated by "#"
+
+Multiple objects can be present in each cell, separated by commas, like this:
+
+object_id:state#object_id:state,object_id:state#object_id#object_id,object_id
+
+Note that this is used to encode the presense of mobile objects (which can
+ share a cell with non-mobile, non-blocking objects)
+
+
+
+vault_contents = ASCII string containing ID:quantity pairs, like:
+
+101:3#3:10#5:1#102:1
+
+(If empty, string is a single "#")
+
+
+backpack_contents = ASCII string, same format as vault_contents
+
+gallery_contents = ASCII string containing list of IDs, like:
+2001#2010#2200
+
+(If empty, string is a single "#")
+
+
+
+price_list = ASCII string containing ID@price pairs, like:
+
+LIST_NUMBER:1@10#2@20#5@25:SIGNATURE
+
+Where SIGNATURE is computed as follows:
+
+HMAC_SHA1( server_secret, LIST_NUMBER . list_body )
+
+Where "." is concatonate, and the resulting HMAC is hex encoded.
+
+Each LIST_NUMBER can only be used once by a given user in a house 
+modification, and then it becomes stale.
+
+
+And:
+
+current_balance = player's current money balance in whole dollars.
+
+must_self_test = 1 if player must test house before submitting it, or 
+                 0 otherwise
+
+music_seed = integer used to seed music generator for this house's song
+
+
+And:
+
+number_of_tapes = the number of security tapes available for this house
+
+
+
+
+
+=== Call:
+server.php?action=start_self_test&user_id=[id number]
+                                 &sequence_number=[number]
+                                 &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+OK
+or
+FAILED  (in the case of a house that has gone stale)
+
+Note:
+Tells server that house owner has started a self test.
+If house goes stale during self test, it is assumed that user quit
+during self test and thus died (example:  quit right before unavoidable death).
+Counts as a house ping.
+
+
+
+
+=== Call:
+server.php?action=end_self_test&user_id=[id number]
+                               &sequence_number=[number]
+                               &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+OK
+or
+FAILED  (in the case of a house that has gone stale)
+
+Note:
+Tells server that house owner has left a self test (Leave action) without dying
+or completing it.  Owner has returned to editing the house.
+On house test success or death, end_self_test should not be sent (instead,
+house should be checked in with the result).
+Counts as a house ping.
+
+
+
+
+
+
+
+=== Call:
+server.php?action=end_edit_house&user_id=[id number]
+                                &sequence_number=[number]
+                                &ticket_hmac=[hmac-sha1, hex-encoded]
+								&died=[0 or 1]
+                                &house_map=[house map ASCII string]
+                                &vault_contents=[vault contents ASCII string]
+                                &backpack_contents=[bp contents ASCII string]
+								&gallery_contents=[gal contents ASCII string]
+                                &price_list=[price list ASCII string]
+                                &purchase_list=[purchase list ASCII string]
+                                &sell_list=[sell list ASCII string]
+								&self_test_move_list=[move list ASCII string]
+                                &family_exit_paths=[paths ASCII string]
+Returns:
+OK
+
+
+Where:
+
+died is 1 if player died while testing house, 0 if test a success, or 2 
+if self-test not needed (no changes since last complete edit).
+
+vault_contents and backpack_contents take the same format as the return values
+of start_edit_house.
+
+price_list is the list returned by start_edit_house
+
+
+purchase_list (and sell_list) is encoded as a series of ID:quantity pairs, 
+like:
+
+101:3#3:10#5:1#102:1
+
+(If empty, string is a single "#")
+
+
+For self_test_move_list format, see move_list in end_rob_house, except that
+tool use is forbidden during self test.  
+Empty move list represented by a single "#".
+
+
+family_exit_paths are separated by ##, and each path is a series of map
+indices separated by #, like:
+
+515#514#513#512##483#482#481#513#512
+
+Paths start at family member location and end at house start location.
+To be valid, path must be contigous and completely unobstructed (only mobiles
+and other family members can be present on path)
+
+(If empty, string is just "##").
+
+
+
+
+=== Call:
+server.php?action=ping_house&user_id=[id number]
+                            &sequence_number=[number]
+                            &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+OK
+or
+FAILED  (in the case of a house that has gone stale and can't be pinged)
+or
+OUT_OF_TIME (in the case that the robbery time limit was exceeded)
+
+Note:
+Proves that house is still being actively edited or robbed, keeping the
+house checked out.  Without regular pings, the house will time out
+and automatically check back in.  Houses are considered stale after 5
+minutes of no pings.
+
+user_id is the owner in the case of a house being edited,
+and user_id is the robber in the case of a house being robbed.
+
+
+
+
+=== Call:
+server.php?action=list_houses&user_id=[id number]
+                             &sequence_number=[number]
+                             &ticket_hmac=[hmac-sha1, hex-encoded]
+                             &skip=[number]
+                             &limit=[number]
+                             &name_search=[any+number+of+words]
+                             &add_to_ignore_list=[character_name (OPTIONAL)]
+                             &clear_ignore_list=[1 to clear (OPTIONAL)]
+Returns:
+home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
+home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
+home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
+home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
+....
+more_pages
+OK
+
+Where:
+character_name and last_robber_name have spaces repaced by "_"
+
+f is a flag associated with each list item.  It is 0 if the house is normal,
+and 1 if the house currently gives user_id the chills.
+
+name_search contains a single word or multiple words concatonated with "+"
+("+" is URL-encoding of " ")
+
+more_pages is 1 if there are more pages and 0 of there are not
+
+Note:
+Lists only robbable houses.
+Returns at most [limit] houses, skipping the first [skip] houses.
+House owned by user_id is skipped.
+If last_robber is user_id, last_robber_name is set to "You".
+
+add_to_ignore_list is an optional parameter that includes one character name 
+to add to the ignored-houses list for this user.
+
+clear_ignore_list, if present and set to 1, clears the ignored-house list
+for this user.
+
+
+home_id is an number that may uniquely identify each house, or it may be a 
+non-unique placeholder number (may be unused by the protocol, but may be used
+in the future).
+
+
+
+
+****
+NOTE:  The get_blueprints call was disabled in v9
+****
+=== Call:
+server.php?action=get_blueprint&user_id=[id number]
+                               &sequence_number=[number]
+                               &ticket_hmac=[hmac-sha1, hex-encoded]
+                               &to_rob_user_id=[id number]
+                               &to_rob_character_name=[name]
+Returns:
+character_name
+houseMap
+OK
+
+--OR--
+
+RECLAIMED
+
+(if owner died)
+
+--OR--
+
+DENIED
+
+(if blueprint request fails for some reason)
+
+Where:
+character_name has spaces repaced by "_"
+houseMap = ASCII string representing the house layout
+
+
+
+
+
+
+
+
+=== Call:
+server.php?action=start_rob_house&user_id=[id number]
+                                 &sequence_number=[number]
+                                 &ticket_hmac=[hmac-sha1, hex-encoded]
+                                 &to_rob_home_id=[id number]
+								 &to_rob_character_name=[name]
+                                 &map_encryption_key=[ASCII key]
+Returns:
+character_name
+encrypted_house_map
+backpack_contents
+gallery_contents
+wife_money
+music_seed
+wife_name
+son_name
+daughter_name
+max_seconds
+OK
+
+--OR--
+
+RECLAIMED
+
+(if owner died)
+
+--OR--
+
+DENIED
+
+(if rob request fails for some reason, including owner home or another
+ robber present)
+
+Where:
+character_name has spaces repaced by "_"
+backpack_contents = ASCII string encoded as described for start_edit_house
+                    (contents of robber's backpack)
+gallery_contents = ASCII string encoded as described for start_edit_house
+music_seed = integer used to seed music generator for this house's song
+
+encrypted_house_map = base64 ASCII encrypted string representing the house 
+                      layout
+
+
+Encryption based on SHA1 hash, where keystream is produced as follows, 
+where . means "concatonate" and shared_secret is secret string known to both
+the client and the server:
+
+
+sha1( "0" . map_encryption_key . shared_secret . "0" ) . 
+sha1( "1" . map_encryption_key . shared_secret . "1" ) . 
+sha1( "2" . map_encryption_key . shared_secret . "2" ) . 
+...
+sha1( "N" . map_encryption_key . shared_secret . "N" )
+
+Where N is chosen so that N * 20 > length( house_map ).
+
+This keystream is XOR'd with the house_map, and then the result is base64-
+encoded to produce encrypted_house_map. 
+
+
+max_seconds is the maximum amount of time the robber can take without dying.
+
+
+
+
+
+=== Call:
+server.php?action=end_rob_house&user_id=[id number]
+                               &sequence_number=[number]
+                               &ticket_hmac=[hmac-sha1, hex-encoded]
+                               &success=[0(die) or 1(hit vault) or 2(leave)]
+                               &wife_killed_robber=[0(false) or 1(true)]
+							   &wife_killed=[0(false) or 1(true)]
+                               &wife_robbed=[0(false) or 1(true)]
+							   &family_killed_count=[number killed]
+							   $backpack_contents=[contents as ASCII string]
+                               &move_list=[move list as ASCII string]
+                               &map_encryption_key=[ASCII key]
+                               &encrypted_house_map=[encrypted ASCII string]
+Returns:
+money_taken
+stuff_taken
+gallery_stuff_taken
+OK
+
+--OR--
+
+OUT_OF_TIME
+
+(if the robbery ran out of time)
+
+--OR--
+
+DENIED
+
+(if the check in failed for some reason)
+
+Where:
+
+
+move_list is encoded as follows:
+
+List of moves separated by # where a move is either:
+mX   (where X is the index of move destination)
+or
+tW@X (where W is the tool ID and X is the index of the tool target)
+or
+L (if the robber leaves the house)
+or
+S (if the robber commits suicide)
+
+move_list examples:
+
+m328#m329#m297#t500@298#m297    (reaches vault at spot 297)
+
+m513#514#515#514#513#512#L   (turns around and leaves)
+
+m513#514#515#S       (walks a few steps in and then commits suicide)
+
+
+
+stuff_taken is an ASCII encoded quantity list (see vault_contents for 
+start_edit_house)
+
+gallery_stuff_taken is ASCII encoded gallery object list (see gallery_contents
+for start_edit_house)
+
+encrypted_house_map is the result map from the robbery in same encrypted format
+as house map returned by start_rob_house.
+
+Note:
+money_taken    is "0" on failure
+stuff_taken  is "#" on failure
+gallery_stuff_taken  is "#" on failure
+backpack_contents is what's left over in backpack after robbery ends
+
+
+
+
+=== Call:
+server.php?action=list_logged_robberies&user_id=[id number]
+                                       &sequence_number=[number]
+                                       &ticket_hmac=[hmac-sha1, hex-encoded]
+                                       &skip=[number]
+                                       &limit=[number]
+                                       &name_search=[single word]
+Returns:
+log_id#character_name#last_robber_name#loot_value#tape_length#robber_deaths#f
+log_id#character_name#last_robber_name#loot_value#tape_length#robber_deaths#f
+log_id#character_name#last_robber_name#loot_value#tape_length#robber_deaths#f
+log_id#character_name#last_robber_name#loot_value#tape_length#robber_deaths#f
+....
+more_pages
+OK
+
+Where:
+character_name and last_robber_name have spaces repaced by "_"
+
+loot_value will start with a "b" (like "b1500") if the robber died and
+the loot_value field actually represents the bounty earned from killing this
+robber.
+
+f is a flag associated with each list item.  It is 0 if the tape has not been
+watched yet, and 1 if the tape has been watched.
+
+more_pages is 1 if there are more pages and 0 of there are not
+
+Note:
+Lists only logged successful robberies, where last_robber_name is the name
+of the successful robber, and loot_value is the value of loot taken.
+Returns at most [limit] houses, skipping the first [skip] houses.
+If robber or victim is user_id, corresponding "_name" field is set to "You".
+
+
+
+
+=== Call:
+server.php?action=get_robbery_log&user_id=[id number]
+                                 &sequence_number=[number]
+                                 &ticket_hmac=[hmac-sha1, hex-encoded]
+                                 &log_id=[id_number]
+Returns:
+robber_name
+victim_name
+houseMap
+backpack_contents
+moveList
+loot_value
+wife_money
+music_seed
+wife_name
+son_name
+daughter_name
+OK
+
+Where:
+robber_name and victim_name have spaces repaced by "_"
+houseMap = ASCII string representing the house layout
+backpack_contents = ASCII string representing loadout
+moveList = ASCII string representing moves made
+
+
+Note:
+If robber or victim is user_id, corresponding "_name" field is set to "You".
+
+loot_value will start with a "b" (like "b1500") if the robber died and
+the loot_value field actually represents the bounty earned from killing this
+robber.
+
+
+
+
+=== Call:
+server.php?action=get_self_test_log&user_id=[id number]
+                                   &sequence_number=[number]
+                                   &ticket_hmac=[hmac-sha1, hex-encoded]
+                                   &house_owner_id=[id number]
+Returns:
+owner_name
+houseMap
+moveList
+wife_money
+music_seed
+wife_name
+son_name
+daughter_name
+OK
+
+Where:
+owner_name has spaces repaced by "_"
+houseMap = ASCII string representing the house layout
+moveList = ASCII string representing moves made
+
+
+Note:
+This call is DENIED if user_id does not have admin status.
+
+
+
+
+=== Call:
+server.php?action=list_auctions&user_id=[id number]
+                               &sequence_number=[number]
+                               &ticket_hmac=[hmac-sha1, hex-encoded]
+Returns:
+seconds_until_price_drop
+object_id#current_price
+object_id#current_price
+object_id#current_price
+....
+OK
+
+Where:
+current_price has been rounded down to whole dollars
+
+seconds_until_price_drop can be meaningless if list is empty
+
+
+
+
+=== Call:
+server.php?action=buy_auction&user_id=[id number]
+                             &sequence_number=[number]
+                             &ticket_hmac=[hmac-sha1, hex-encoded]
+                             &object_id=[id_number]
+Returns:
+purchase_price
+OK
+
+or
+
+DENIED
+(If player balance is insufficient or object bought by someone else first
+ our house is not checked out.)
+
+Note:
+House must be actively checked out in edit mode by owner to make auction 
+purchases
+
+
+
+
+
+=== Call:
+server.php?action=check_space_used
+
+Returns:
+byteCount
+
+Where:
+byteCount = total number of bytes used by all database tables
+
+
+
+=== Call:
+server.php?action=count_users
+
+Returns:
+userCount
+
+Where:
+userCount = number of users on server
+
+
+
+
+
+=== Call:
+server.php?action=check_for_flush
+
+Returns:
+OK
+
+Manually checks if a flush is overdue and runs one if it is.
+Can be called from a cron job.
+
+Note:
+Flush removes stale house checkouts, etc.
+
+check_for_flush will happen automatically at the beginning of all client calls
+(thus being triggered without cron, but slowing down the unlucky client call
+that triggers the flus) if configured that way in settings.php
+
+
+
+
+
+=== Call:
+server.php?action=get_price_list
+
+Returns:
+price_list
+
+Where:
+price_list = ASCII string containing ID@price pairs, like:
+
+1@10#2@20#5@25
+
+This list contains the current prices on the server.

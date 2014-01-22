@@ -1,0 +1,49 @@
+
+# First, replace all stuck trapdoors with unsuck ones
+# Note that this causes house_map_hashes to no longer match their maps
+
+UPDATE castleServer_maps
+SET house_map = replace( house_map, "112:2!", "112:2")
+WHERE house_map LIKE "%112:2!%";
+
+
+# Now regenerate house_map_hashes for all main house maps
+
+UPDATE castleServer_maps as m, castleServer_houses as h
+SET h.house_map_hash = SHA1( m.house_map )
+WHERE h.house_map_hash = m.house_map_hash;
+
+
+# Same for all self-test house maps
+
+UPDATE castleServer_maps as m, castleServer_houses as h
+SET h.self_test_house_map_hash = SHA1( m.house_map )
+WHERE h.self_test_house_map_hash = m.house_map_hash;
+
+
+
+# repeat for owner-died shadow table
+
+UPDATE castleServer_maps as m, castleServer_houses_owner_died as h
+SET h.house_map_hash = SHA1( m.house_map )
+WHERE h.house_map_hash = m.house_map_hash;
+
+UPDATE castleServer_maps as m, castleServer_houses_owner_died as h
+SET h.self_test_house_map_hash = SHA1( m.house_map )
+WHERE h.self_test_house_map_hash = m.house_map_hash;
+
+
+
+
+# Now same for recording maps
+
+UPDATE castleServer_maps as m, castleServer_robbery_logs as r
+SET r.house_start_map_hash = SHA1( m.house_map )
+WHERE r.house_start_map_hash = m.house_map_hash;
+
+
+
+# Finally, correct hashes in map cache to match altered maps
+
+UPDATE castleServer_maps
+SET house_map_hash = SHA1( house_map );

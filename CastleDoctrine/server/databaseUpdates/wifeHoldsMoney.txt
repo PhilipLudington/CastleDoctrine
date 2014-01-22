@@ -1,0 +1,18 @@
+ALTER TABLE castleServer_houses
+ADD COLUMN wife_loot_value INT NOT NULL AFTER loot_value;
+
+
+UPDATE castleServer_houses SET wife_loot_value = floor( loot_value / 2 ), loot_value = ceil( loot_value / 2 ) WHERE wife_present = 1;
+
+UPDATE castleServer_houses SET wife_loot_value = 0 WHERE wife_present = 0;
+
+
+
+
+ALTER TABLE castleServer_houses_owner_died
+ADD COLUMN wife_loot_value INT NOT NULL AFTER loot_value;
+
+
+UPDATE castleServer_houses_owner_died SET wife_loot_value = floor( loot_value / 2 ), loot_value = ceil( loot_value / 2 ) WHERE wife_present = 1;
+
+UPDATE castleServer_houses_owner_died SET wife_loot_value = 0 WHERE wife_present = 0;

@@ -1,0 +1,4 @@
+structural
+blocking
+stuck
+darkHaloBehind

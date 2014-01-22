@@ -1,0 +1,19 @@
+Bypass cost curve for walls:  80 * sqrt( wall cost )
+
+Bypass cost curve for bottlenecks:  40 * sqrt( bottleneck cost)
+
+
+
+Modifications:
+
+Pits are more powerful than other walls, because animals can be seen from accross them.  Increase pit cost by $100 to compensate for this, pushing it under curve.
+
+Doors are currently way above the curve.  But doors are not viable without a lot of other complex wiring and wiring protection around them.  Now that wire cutter cost has been raised, though, maybe doors are overpowered.  So far, though, they have been way under-used by players.
+
+Curve puts wood wall bypass cost at $178.  However, this would allow 10+ wood walls to be bypassed on the starting budget.  Similar case for electric floors (curve puts their bypass cost at $282, allowing 7 floors to be bypassed on starting money.  Further amp up low end of curve to $400 bypass cost (5 bypassed on starting money) to compensate for this.
+
+Realized that ON electric floors are a different class of bottleneck, because they pass power, so they can make a "one long line of the same obstacle" that is very expensive to cut through.  Need to lower the cost of passing ON floors to compensate for this.  Try $100.  Keep the cost of cutting OFF floors high.
+
+
+
+

@@ -1,0 +1,25 @@
+
+// Updates houses table to have a self_test_house_map column, and copies
+// over IDs from live robberies.
+
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses ADD self_test_house_map LONGTEXT NOT NULL AFTER edit_count;
+
+UPDATE castleServer_houses set self_test_house_map = house_map;
+
+COMMIT;
+
+
+
+// Whoa!  Forgot to update the owner_died table
+
+SET autocommit=0;
+
+ALTER TABLE castleServer_houses_owner_died ADD self_test_house_map LONGTEXT NOT NULL AFTER edit_count;
+
+UPDATE castleServer_houses_owner_died set self_test_house_map = house_map;
+
+COMMIT;
+

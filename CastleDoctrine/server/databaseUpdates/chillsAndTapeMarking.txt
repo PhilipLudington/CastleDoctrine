@@ -1,0 +1,10 @@
+
+
+ALTER TABLE castleServer_robbery_logs 
+ADD COLUMN log_watched TINYINT NOT NULL AFTER log_id;
+
+UPDATE castleServer_robbery_logs
+SET log_watched = 0; 
+
+
+# MUST run server.php to create chilling_houses table

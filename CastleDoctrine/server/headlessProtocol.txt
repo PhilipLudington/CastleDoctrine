@@ -1,0 +1,88 @@
+Protocol for headless game client (client waits for incoming socket connections
+that send robbery logs to be verified, and responds with the results).
+
+
+This is a NON-http protocol.  Simple ASCII socket messages instead.  Message
+parts are whitespace-delimited.
+
+Client reads request up to [END_REQUEST] before responding, and ends all of its
+responses with [END_RESPONSE]
+
+
+On failure, response is FAILED
+
+
+
+=== Call:
+check_alive
+[END_REQUEST]
+
+
+Returns:
+OK
+[END_RESPONSE]
+
+
+
+=== Call:
+quit
+password
+[END_REQUEST]
+
+
+Returns:
+OK
+[END_RESPONSE]
+
+
+Where:
+password must be match the password defined in the client's 
+simulatorServerPassword settings file.
+
+Kills the server gracefully.
+
+
+
+=== Call:
+simulate_robbery
+house_map
+backpack_contents
+move_list
+wife_money
+[END_REQUEST]
+
+
+Returns:
+success
+wife_killed_robber
+wife_killed
+wife_robbed
+family_killed_count
+end_backpack_contents
+end_house_map
+[END_RESPONSE]
+
+
+
+Where:
+
+success = [0(die) or 1(hit vault) or 2(leave)]
+
+wife_killed_robber = [0(false) or 1(true)]
+
+wife_killed = [0(false) or 1(true)]
+
+wife_robbed = [0(false) or 1(true)]
+
+family_killed_count = [number killed]
+
+backpack_contents and end_backpack_contents = [contents as ASCII string]
+
+house_map and end_house_map = [maps as ASCII string]
+
+
+
+For ASCII string representations, see server protocol.txt
+
+
+
