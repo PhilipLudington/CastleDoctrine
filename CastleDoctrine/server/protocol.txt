@@ -1,6 +1,15 @@
 All returns are whitespace-delimited.
 
 
+If the server detects that a request is incomplete (an incomplete HTTP/1.0
+request for GET requests, or a truncated request body that doesn't match the
+Content-Length header for POST requests), the server will sleep for 30 seconds
+before returning 'INCOMPLETE'.  The sleep allows clients to time out and retry
+without having to deal with the error message (the server lets them treat
+INCOMPLETE requests like server timeouts).  The server only performs this check
+for requests that include a ticket_hmac.
+
+
 
 Most calls can return 'DENIED' on failure
 
@@ -174,8 +183,18 @@ server.php?action=start_self_test&user_id=[id number]
                                  &ticket_hmac=[hmac-sha1, hex-encoded]
 Returns:
 OK
+
 or
+
 FAILED  (in the case of a house that has gone stale)
+
+or
+
+OK
+SERVER_GOING_DOWN
+(in the case that test can start okay, but the server is trying to shutdown)
+
+
 
 Note:
 Tells server that house owner has started a self test.
@@ -192,8 +211,18 @@ server.php?action=end_self_test&user_id=[id number]
                                &ticket_hmac=[hmac-sha1, hex-encoded]
 Returns:
 OK
+
 or
+
 FAILED  (in the case of a house that has gone stale)
+
+or
+
+OK
+SERVER_GOING_DOWN
+(in the case that test can end okay, but the server is trying to shutdown)
+
+
 
 Note:
 Tells server that house owner has left a self test (Leave action) without dying
@@ -270,10 +299,21 @@ server.php?action=ping_house&user_id=[id number]
                             &ticket_hmac=[hmac-sha1, hex-encoded]
 Returns:
 OK
+
 or
+
 FAILED  (in the case of a house that has gone stale and can't be pinged)
+
 or
+
 OUT_OF_TIME (in the case that the robbery time limit was exceeded)
+
+or
+
+OK
+SERVER_GOING_DOWN
+(in the case that a ping is okay, but the server is trying to shutdown)
+
 
 Note:
 Proves that house is still being actively edited or robbed, keeping the
@@ -302,7 +342,7 @@ home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
 home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
 home_id#character_name#last_robber_name#loot_value#rob_attempts#robber_deaths#f
 ....
-more_pages
+more_pages#skip
 OK
 
 Where:
@@ -315,6 +355,13 @@ name_search contains a single word or multiple words concatonated with "+"
 ("+" is URL-encoding of " ")
 
 more_pages is 1 if there are more pages and 0 of there are not
+
+skip in the call is optional.  If omitted, a list page of [limit] houses from
+around the player's house value will be returned.
+
+skip in the return value shows the skip that was used to get to the current
+page (either supplied by the call or inferred from the user's house value).
+
 
 Note:
 Lists only robbable houses.
@@ -591,6 +638,7 @@ server.php?action=get_self_test_log&user_id=[id number]
                                    &sequence_number=[number]
                                    &ticket_hmac=[hmac-sha1, hex-encoded]
                                    &house_owner_id=[id number]
+                                   &house_owner_character_name=[name]
 Returns:
 owner_name
 houseMap
@@ -610,6 +658,9 @@ moveList = ASCII string representing moves made
 
 Note:
 This call is DENIED if user_id does not have admin status.
+
+house_owner_id is the home_id returned by list_houses
+
 
 
 

@@ -535,6 +535,7 @@ static char *propagatePower(  int *inMapIDs,
                               int *inMapStates,
                               int *inMapMobileIDs, int *inMapMobileStates,
                               int inMapW, int inMapH,
+                              SimpleVector<int> *inAffectedByPower,
                               char **outTopBottomPowerMap ) {
     
     int numCells = inMapW * inMapH;
@@ -583,7 +584,9 @@ static char *propagatePower(  int *inMapIDs,
     
     // first, start power at cells that are powered currently
 
-    for( int i=0; i<numCells; i++ ) {
+    for( int a=0; a<inAffectedByPower->size(); a++ ) {
+        int i = *( inAffectedByPower->getElement( a ) );
+        
         if( isPropertySet( inMapIDs[i], inMapStates[i], powered ) 
             ||
             isMobilePropertySet( inMapMobileIDs[i], inMapMobileStates[i], 
@@ -597,7 +600,9 @@ static char *propagatePower(  int *inMapIDs,
 
     // cache conductive properties, but only if they matter
     if( change ) {
-        for( int i=0; i<numCells; i++ ) {
+        for( int a=0; a<inAffectedByPower->size(); a++ ) {
+            int i = *( inAffectedByPower->getElement( a ) );
+
             if( isPropertySet( inMapIDs[i], inMapStates[i], conductive ) 
                 ||
                 isMobilePropertySet( inMapMobileIDs[i], inMapMobileStates[i], 
@@ -647,7 +652,9 @@ static char *propagatePower(  int *inMapIDs,
     
     SimpleVector<int> conductiveIndicesList;
     
-    for( int i=0; i<numCells; i++ ) {
+    for( int a=0; a<inAffectedByPower->size(); a++ ) {
+        int i = *( inAffectedByPower->getElement( a ) );
+
         if( ! notAtAllConductive[i] ) {
             conductiveIndicesList.push_back( i );
             }
@@ -869,12 +876,15 @@ static char *propagatePower(  int *inMapIDs,
 //
 // Thus, inMapMobileIDs and inMapMobileStates are NOT changed by this call
 //
+// inAffectedByPower is a list of indices that might be affected by power.
+//
 // if inInit is set to true, then the state of the map is initialize
 // from a "no power anywhere" initializing power condition
 static char applyPowerTransitions( int *inMapIDs, 
                                    int *inMapStates,
                                    int *inMapMobileIDs, int *inMapMobileStates,
                                    int inMapW, int inMapH,
+                                   SimpleVector<int> *inAffectedByPower,
                                    char inInit = false ) {
     
     
@@ -899,11 +909,11 @@ static char applyPowerTransitions( int *inMapIDs,
         powerMap = propagatePower( inMapIDs, inMapStates,
                                    inMapMobileIDs, inMapMobileStates, 
                                    inMapW, inMapH,
+                                   inAffectedByPower,
                                    &topBottomPowerMap );
         }
     
 
-    int numCells = inMapW * inMapH;
 
     
     // now execute transitions for cells based on power or noPower
@@ -911,7 +921,8 @@ static char applyPowerTransitions( int *inMapIDs,
     char transitionHappened = false;
     
 
-    for( int i=0; i<numCells; i++ ) {
+    for( int a=0; a<inAffectedByPower->size(); a++ ) {
+        int i = *( inAffectedByPower->getElement( a ) );
         
         TransitionTriggerRecord *r;
         
@@ -1347,8 +1358,6 @@ static void applyMobileTransitions( int *inMapIDs, int *inMapStates,
                 &&
                 transRecord->targetEndState != mobOverTileState ) {
                 
-                printf( "Mobile-triggered transition hit\n" );
-
                 inMapStates[ mobIndex ] = transRecord->targetEndState;
                 
                 // only allow one transition triggered per mobile object
@@ -1478,6 +1487,61 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
 
 
     // now process power transitions
+    
+    // first, compose a sub-list of indices that could possibly be affected
+    // by power
+    SimpleVector<int> affectedByPower;
+    
+    
+    SimpleVector<TransitionTriggerRecord *> powerTriggers;
+
+    powerTriggers.push_back( &( triggerRecords[ trigger_power ] ) );
+    powerTriggers.push_back( &( triggerRecords[ trigger_noPower ] ) );
+    powerTriggers.push_back( &( triggerRecords[ trigger_powerNorth ] ) );
+    powerTriggers.push_back( &( triggerRecords[ trigger_noPowerNorth ] ) );
+    
+    int numTriggers = powerTriggers.size();
+    
+    for( int i=0; i<numCells; i++ ) {
+        char hit = false;
+        
+        //affectedByPower.push_back( i );
+        //hit = true;
+        //continue;
+
+        if( isPropertyEverSet( inMapIDs[i], powered ) ||
+            isPropertyEverSet( inMapMobileIDs[i], powered ) ||
+            isPropertyEverSet( inMapIDs[i], conductive ) ||
+            isPropertyEverSet( inMapMobileIDs[i], conductive ) ||
+            isPropertyEverSet( inMapIDs[i], conductiveLeftToRight ) ||
+            isPropertyEverSet( inMapMobileIDs[i], conductiveLeftToRight ) ||
+            isPropertyEverSet( inMapIDs[i], conductiveTopToBottom ) ||
+            isPropertyEverSet( inMapMobileIDs[i], conductiveTopToBottom ) ||
+            isPropertyEverSet( inMapIDs[i], conductiveInternal ) ||
+            isPropertyEverSet( inMapMobileIDs[i], conductiveInternal ) ) {
+            
+            affectedByPower.push_back( i );
+            hit = true;
+            }
+
+        for( int a=0; a<numTriggers && !hit; a++ ) {
+            TransitionTriggerRecord *r = 
+                *( powerTriggers.getElement( a ) );
+            
+            for( int j=0; j<r->numTransitions && !hit; j++ ) {
+        
+                TransitionRecord *transRecord = 
+                    &( r->transitions[j] );
+            
+                if( transRecord->targetID == inMapIDs[i] ||
+                    transRecord->targetID == inMapMobileIDs[i] ) {
+                    affectedByPower.push_back( i );
+                    hit = true;
+                    }
+                }
+            }
+        }
+    
 
 
     if( poweredObjectsAreMemoryless ) {
@@ -1491,6 +1555,7 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
         applyPowerTransitions( inMapIDs, inMapStates, 
                                inMapMobileIDs, inMapMobileStates,
                                inMapW, inMapH,
+                               &affectedByPower,
                                // init
                                true );
         }
@@ -1514,17 +1579,13 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
     //  effectively freezes the game [noticed by Joshua Collins]).
     int transitionCount = 0;
     int transitionLimit = 32;
-        
-    int *startStates = new int[ numCells ];
-        
-    memcpy( startStates, inMapStates, numCells * sizeof( int ) );
-
 
     while( transitionHappened && ! loopDetected ) {
         transitionHappened = 
             applyPowerTransitions( inMapIDs, inMapStates, 
                                    inMapMobileIDs, inMapMobileStates,
-                                   inMapW, inMapH );
+                                   inMapW, inMapH,
+                                   &affectedByPower );
 
         if( transitionHappened ) {
             transitionCount++;
@@ -1556,19 +1617,29 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
         // in case of looping, all elements involved in the loop settle
         // down into the lowest-seen state number that they encounter 
         // during execution of the loop
-
-        if( transitionCount > transitionLimit ) {
-            // hit transition limit without seeing a real loop
-            
-            // return to start state before running the loop again in this
-            // case, because we're going to look for lowest-seen-states
-            // within this transition limit instead of a full loop
-            memcpy( inMapStates, startStates, numCells * sizeof( int ) );
-            }
-        // otherwise, DON'T return to start state, because we use the
+        // in this case, DON'T return to start state, because we use the
         // current state as a return state for loop detection (and start
         // state might not actually be part of loop, so may never be returned
         // to)
+
+
+        // in the case of a step limit overrun with no loop, 
+        // all elements settle
+        // down into the lowest state that we see for them from here on out
+        //
+        // in this case, start stepping from our current state,
+        // where we got cut off by the limit, and look for the 
+        // lowest seen state for each component from this point forward
+        // (don't return to the starting state, because we want to 
+        //  eliminate the chance of sub-components that are actually 
+        //  looping before the step count is hit from being set back to
+        //  their starting states by the global state suddenly exceeding
+        //  the step limit)
+        
+
+        // In other words:
+        // We start from the same state for both real looping and overrun.
+
 
         // observer the same transition limit here as we look for the 
         // lowest seen state for each cell (in the case of
@@ -1589,7 +1660,8 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
 
         applyPowerTransitions( inMapIDs, inMapStates, 
                                inMapMobileIDs, inMapMobileStates,
-                               inMapW, inMapH );
+                               inMapW, inMapH,
+                               &affectedByPower );
         char *lastChecksum = 
             getMapStateChecksum( inMapStates, inMapW, inMapH );
         
@@ -1608,7 +1680,8 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
 
             applyPowerTransitions( inMapIDs, inMapStates,
                                    inMapMobileIDs, inMapMobileStates,
-                                   inMapW, inMapH );
+                                   inMapW, inMapH,
+                                   &affectedByPower );
             lastChecksum = 
                 getMapStateChecksum( inMapStates, inMapW, inMapH );
             
@@ -1625,7 +1698,6 @@ void applyTransitions( int *inMapIDs, int *inMapStates,
         }
     
 
-    delete [] startStates;
 
     for( int i=0; i<seenStates.size(); i++ ) {
         delete [] *( seenStates.getElement( i ) );

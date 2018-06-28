@@ -131,6 +131,30 @@ $adminEmail = "jason@server.com";
 
 
 
+// enable to call the admin in an emergency using the Twilio phone API
+$callAdminInEmergency = 0;
+
+// must be a number registered with Twilio
+$twilioFromNumber = "+15307565555";
+
+$twilioToNumber = "+15307565555";
+
+$twilioAcountID = "replace_me";
+
+$twilioAuthToken = "replace_me";
+
+$curlPath = "/usr/bin/curl";
+
+
+
+
+// how many simultaneous mysql connections can we see before we
+// start worrying and contacting the administator?
+$mysqlConnectionCountThreshold = 50;
+
+
+
+
 // mail settings
 
 $siteEmailAddress = "Jason Rohrer <jcr13@cornell.edu>";
@@ -473,7 +497,13 @@ $vaultBountyTimeout = "0 1:00:0.000";
 
 
 // what's the maximum time a robber can stay in a house?
-$maxRobberyTime = "0 0:10:0.000";
+$maxRobberyTime = "0 0:20:0.000";
+
+
+// delay before a new house is listed (time from when that house created
+// on the server, thus a house that is worked on for longer than this
+// will go on the list as soon as it is done)
+$newHouseListingDelayTime = "0 0:05:0.000";
 
 
 
@@ -484,6 +514,22 @@ $maxRobberyTime = "0 0:10:0.000";
 // maintenance, etc.
 
 $shutdownMode = 0;
+// message to send to client explaining shutdown.
+/* Separate lines with ## */ 
+$shutdownMessage =
+"The server is going to be rebooted to add a##".
+"third CPU core. Should be back online soon.##".
+"--Jason";
+
+
+
+// after an unplanned outage, enable this before restarting server
+// to give players a grace period from their death-from-timeouts.
+//
+// WARNING:  do not leave this on long term, because it blocks all
+// flush operations, which are necessary to prevent old, unused data
+// from building up in the database.
+$gracePeriod = 0;
 
 
 

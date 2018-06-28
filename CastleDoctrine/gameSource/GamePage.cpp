@@ -25,7 +25,9 @@ doublePair GamePage::sResponseWarningPosition = { 0, 0 };
 
 double GamePage::sWaitingFade = 0;
 char GamePage::sWaiting = false;
+char GamePage::sShowWaitingWarningOnly = false;
 
+char GamePage::sShutdownPendingWarning = false;
 
 
 extern int currentActiveSerialWebRequest;
@@ -143,6 +145,24 @@ void GamePage::setToolTip( const char *inTip ) {
 
 
 
+void GamePage::clearToolTip( const char *inTipToClear ) {
+    if( mTip != NULL ) {
+        if( strcmp( mTip, inTipToClear ) == 0 ) {
+
+            // tip disappearing, save it as mLastTip
+            if( mLastTip != NULL ) {
+                delete [] mLastTip;
+                }
+            mLastTip = mTip;
+            mLastTipFade = 1.0;
+            
+            mTip = NULL;
+            }
+        }
+    }
+
+
+
 void GamePage::setTipPosition( char inTop ) {
     mTipAtTopOfScreen = inTop;
     }
@@ -152,7 +172,21 @@ void GamePage::setTipPosition( char inTop ) {
 
 void GamePage::base_draw( doublePair inViewCenter, 
                           double inViewSize ){
+
+    if( sShutdownPendingWarning ) {
+        // skip drawing current page and draw warning instead
+
+        doublePair labelPos = { 0, 0 };
+        
+        drawMessage( "shutdownPendingWarning", labelPos );
+        
+        return;
+        }
+
     
+    drawUnderComponents( inViewCenter, inViewSize );
+
+
     PageComponent::base_draw( inViewCenter, inViewSize );
     
 
@@ -227,12 +261,19 @@ void GamePage::base_draw( doublePair inViewCenter,
             }
 
 
-        if( showWarningIcon ) {
+        if( showWarningIcon && ! makeWaitingIconSmall() ) {
             spritePos.y -= 0.5;
             
             setDrawColor( r, g, b, sWaitingFade );
             
             drawSprite( sResponseWarningSprite, spritePos, 1/16.0 );
+            sResponseWarningShowing = true;
+            sResponseWarningPosition = spritePos;
+            }
+        else if( showWarningIcon ) {
+            // should show warning, but not enough room (small icon)
+            
+            // still show tool tip centered on small icon
             sResponseWarningShowing = true;
             sResponseWarningPosition = spritePos;
             }
@@ -246,6 +287,12 @@ extern double frameRateFactor;
 
 
 void GamePage::base_step() {
+    if( sShutdownPendingWarning ) {
+        // skip stepping stuff so that game doesn't advance
+        // while the user's view is obscured
+        return;
+        }
+    
     PageComponent::base_step();
 
 
@@ -255,7 +302,14 @@ void GamePage::base_step() {
         }
     
 
-    if( sWaiting ) {
+    if( sWaiting 
+        && 
+        canShowWaitingIcon() 
+        &&
+        ( ! sShowWaitingWarningOnly 
+          || 
+          getWebRequestRetryStatus( currentActiveSerialWebRequest ) > 0 ) ) {
+        
         sWaitingFade += 0.05 * frameRateFactor;
     
         if( sWaitingFade > 1 ) {
@@ -307,6 +361,24 @@ void GamePage::base_step() {
 
 
 
+void GamePage::showShutdownPendingWarning() {
+    sShutdownPendingWarning = true;
+    setIgnoreEvents( true );
+    }
+
+
+
+void GamePage::base_keyDown( unsigned char inASCII ) {
+    PageComponent::base_keyDown( inASCII );
+    
+    if( sShutdownPendingWarning && inASCII == ' ' ) {
+        sShutdownPendingWarning = false;
+        setIgnoreEvents( false );
+        }
+    }
+
+
+
 
 void GamePage::base_makeActive( char inFresh ){
     if( inFresh ) {    
@@ -343,9 +415,10 @@ void GamePage::base_makeNotActive(){
 
 
 
-void GamePage::setWaiting( char inWaiting ) {
+void GamePage::setWaiting( char inWaiting, char inWarningOnly ) {
     sWaiting = inWaiting;
-
+    sShowWaitingWarningOnly = inWarningOnly;
+    
     if( sWaiting == false && mResponseWarningTipShowing ) {
         setToolTip( NULL );
         }

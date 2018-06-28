@@ -74,6 +74,21 @@ if( get_magic_quotes_gpc() ) {
     
 
 
+// Check that the referrer header is this page, or kill the connection.
+// Used to block XSRF attacks on state-changing functions.
+// (To prevent it from being dangerous to surf other sites while you are
+// logged in as admin.)
+// Thanks Chris Cowan.
+function ts_checkReferrer() {
+    global $fullServerURL;
+    
+    if( !isset($_SERVER['HTTP_REFERER']) ||
+        strpos($_SERVER['HTTP_REFERER'], $fullServerURL) !== 0 ) {
+        
+        die( "Bad referrer header" );
+        }
+    }
+
 
 
 
@@ -347,7 +362,7 @@ function ts_showLog() {
 
     for( $i=0; $i<$numRows; $i++ ) {
         $time = mysql_result( $result, $i, "entry_time" );
-        $entry = mysql_result( $result, $i, "entry" );
+        $entry = htmlspecialchars( mysql_result( $result, $i, "entry" ) );
 
         echo "<b>$time</b>:<br>$entry<hr>\n";
         }
@@ -962,13 +977,14 @@ function ts_showDownloads() {
         $coupon_code = "";
         
         
-        $query = "SELECT coupon_code from $tableNamePrefix"."tickets ".
+        $query = "SELECT email, coupon_code from $tableNamePrefix"."tickets ".
             "WHERE ticket_id = '$ticket_id';";
 
         $result = ts_queryDatabase( $query );
     
         $row = mysql_fetch_array( $result, MYSQL_ASSOC );
         
+        $email = $row[ "email" ];
         $coupon_code = $row[ "coupon_code" ];
 
         
@@ -1168,7 +1184,8 @@ function ts_emailOptIn() {
 
 
 function ts_logout() {
-
+    ts_checkReferrer();
+    
     ts_clearPasswordCookie();
 
     echo "Logged out";
@@ -1477,48 +1494,9 @@ function ts_showData( $checkPassword = true ) {
     
     echo "<hr>";
 
+    // blank form
+    ts_printSendAllNoteForm( "", "" );
 ?>
-    <FORM ACTION="server.php" METHOD="post">
-    <INPUT TYPE="hidden" NAME="action" VALUE="send_all_note">
-    Subject:
-    <INPUT TYPE="text" MAXLENGTH=80 SIZE=40 NAME="message_subject"><br>
-    Tag:
-    <SELECT NAME="tag">
-<?php
-    // auto-gen ALL tags for batches
-
-    $query = "SELECT COUNT(*) FROM $tableNamePrefix"."tickets ".
-         "WHERE blocked = '0' AND email_opt_in = '1';";
-    $result = ts_queryDatabase( $query );
-    $totalTickets = mysql_result( $result, 0, 0 );
-
-    $numToSkip = 0;
-    global $emailMaxBatchSize;
-    
-    while( $totalTickets > 0 ) {
-        echo "<OPTION VALUE=\"ALL_BATCH_$numToSkip\">".
-            "ALL_BATCH_$numToSkip</OPTION>";
-        $totalTickets -= $emailMaxBatchSize;
-        $numToSkip += $emailMaxBatchSize;
-        }
-    
-         
-    // auto-gen a drop-down list of available tags
-    global $allowedDownloadDates;
-    
-    foreach( $allowedDownloadDates as $tag => $date ){
-        echo "<OPTION VALUE=\"$tag\">$tag</OPTION>";
-        }
-?>
-    </SELECT><br>
-     Message:<br>
-     (<b>#DOWNLOAD_LINK#</b> will be replaced with individual's link)<br>
-     (<b>#DOWNLOAD_CODE#</b> will be replaced with individual's DL code)<br>
-     (<b>#COUPON_CODE#</b> will be replaced with individual's coupon code)<br>
-         <TEXTAREA NAME="message_text" COLS=50 ROWS=10></TEXTAREA><br>
-    <INPUT TYPE="checkbox" NAME="confirm" VALUE=1> Confirm<br>      
-    <INPUT TYPE="Submit" VALUE="Send">
-    </FORM>
     <hr>
 
 
@@ -1870,6 +1848,58 @@ function ts_sendEmail_p( $inTickeID, $inName, $inEmail ) {
     }
 
 
+function ts_printSendAllNoteForm( $inSetMessageSubject, $inSetMessageBody ) {
+    global $tableNamePrefix;
+?>
+    <FORM ACTION="server.php" METHOD="post">
+    <INPUT TYPE="hidden" NAME="action" VALUE="send_all_note">
+    Subject:
+    <INPUT TYPE="text" MAXLENGTH=80 SIZE=40 NAME="message_subject"
+          value="<?php echo $inSetMessageSubject;?>" ><br>
+    Tag:
+    <SELECT NAME="tag">
+<?php
+    // auto-gen ALL tags for batches
+
+    $query = "SELECT COUNT(*) FROM $tableNamePrefix"."tickets ".
+         "WHERE blocked = '0' AND email_opt_in = '1';";
+    $result = ts_queryDatabase( $query );
+    $totalTickets = mysql_result( $result, 0, 0 );
+
+    $numToSkip = 0;
+    global $emailMaxBatchSize;
+    
+    while( $totalTickets > 0 ) {
+        echo "<OPTION VALUE=\"ALL_BATCH_$numToSkip\">".
+            "ALL_BATCH_$numToSkip</OPTION>";
+        $totalTickets -= $emailMaxBatchSize;
+        $numToSkip += $emailMaxBatchSize;
+        }
+    
+         
+    // auto-gen a drop-down list of available tags
+    global $allowedDownloadDates;
+    
+    foreach( $allowedDownloadDates as $tag => $date ){
+        echo "<OPTION VALUE=\"$tag\">$tag</OPTION>";
+        }
+?>
+    </SELECT><br>
+     Message:<br>
+     (<b>#DOWNLOAD_LINK#</b> will be replaced with individual's link)<br>
+     (<b>#DOWNLOAD_CODE#</b> will be replaced with individual's DL code)<br>
+     (<b>#COUPON_CODE#</b> will be replaced with individual's coupon code)<br>
+          <TEXTAREA NAME="message_text" COLS=50 ROWS=10><?php echo $inSetMessageBody;?></TEXTAREA><br>
+    <INPUT TYPE="checkbox" NAME="confirm" VALUE=1> Confirm<br>      
+    <INPUT TYPE="Submit" VALUE="Send">
+    </FORM>
+    <hr>
+<?php
+
+    }
+
+
+
 
 function ts_sendAllNote() {
     ts_checkPassword( "send_all_note" );
@@ -1931,6 +1961,16 @@ function ts_sendAllNote() {
     
     // show opt-out URL at bottom of email
     ts_sendNote_q( $query, $message_subject, $message_text, 1 );
+
+
+    // show resend form
+    echo "<hr>";
+
+    echo "<br><br>Done sending for tag <b>$tag</b>.<br>";
+    echo "Send another batch?<br><br>";
+
+    ts_printSendAllNoteForm( $message_subject, $message_text );
+ 
     }
 
 
@@ -2533,6 +2573,7 @@ function ts_checkPassword( $inFunctionName ) {
         $password_hash = $newSalt . "_" . $newHash;
         }
     else if( isset( $_COOKIE[ $cookieName ] ) ) {
+        ts_checkReferrer();
         $password_hash = $_COOKIE[ $cookieName ];
         
         // check that it's a good hash

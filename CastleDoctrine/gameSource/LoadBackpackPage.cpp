@@ -44,7 +44,6 @@ LoadBackpackPage::LoadBackpackPage()
 
     addComponent( &mDoneButton );
     addComponent( &mUndoButton );
-    addComponent( &mToolPicker );
     addComponent( &mBuyButton );
 
     addComponent( &mSellModeButton );
@@ -55,6 +54,8 @@ LoadBackpackPage::LoadBackpackPage()
     addComponent( &mBuyModeButton );
     addComponent( &mMoveHalfButton );
     addComponent( &mMoveOneButton );
+
+    addComponent( &mToolPicker );
 
     
     mSellModeButton.setMouseOverTip( translate( "sellModeTip" ) );
@@ -891,7 +892,14 @@ void LoadBackpackPage::makeActive( char inFresh ) {
     
     checkSellModeStatus();
     }
-        
+
+
+
+void LoadBackpackPage::drawUnderComponents( doublePair inViewCenter, 
+                                            double inViewSize ) {
+    
+    drawBalance( mLootValue, 0 );
+    }
 
 
 
@@ -929,5 +937,4 @@ void LoadBackpackPage::draw( doublePair inViewCenter,
 
 
 
-    drawBalance( mLootValue, 0 );
     }

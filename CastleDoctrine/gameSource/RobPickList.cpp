@@ -90,6 +90,12 @@ RobPickList::RobPickList( double inX, double inY,
     mIgnoreButton.setMouseOverTip( translate( "ignoreTip" ) );
     mClearIgnoreListButton.setMouseOverTip( 
         translate( "clearIgnoreListTip" ) );
+
+    if( !mRobberyLog ) {
+        // start off with no skip specified to fetch house page
+        // near our value range from server first time
+        mCurrentSkip = -1;
+        }
     }
 
 
@@ -128,13 +134,34 @@ void RobPickList::actionPerformed( GUIComponent *inTarget ) {
     else if( inTarget == &mFilterButton || inTarget == &mSearchField ) {
         delete [] mAppliedSearchWords;
 
-        char *separateWords = mSearchField.getText();
+        char *searchText = mSearchField.getText();
 
-        char found;
-        mAppliedSearchWords = replaceAll( separateWords, " ", "+", &found );
+        SimpleVector<char *> *words = tokenizeString( searchText );
+
+        delete [] searchText;
         
-        delete [] separateWords;
+        if( words->size() == 0 ) {
+            // reset us back to our neighborhood on the house list
+            mCurrentSkip = -1;
+            }
+        
+        if( words->size() > 0 ) {
+            char **wordsArray = words->getElementArray();
+        
+            mAppliedSearchWords = join( wordsArray, words->size(), "+" );
 
+            for( int i=0; i<words->size(); i++ ) {
+                delete [] wordsArray[i];
+                }
+            delete [] wordsArray;
+            }
+        else {
+            mAppliedSearchWords = stringDuplicate( "" );
+            }
+
+        delete words;
+
+        
         refreshList( true, false );
         }
     else if( inTarget == &mIgnoreButton ) {
@@ -157,8 +184,15 @@ void RobPickList::actionPerformed( GUIComponent *inTarget ) {
         
         mClearIgnoreListButton.setVisible( false );
         
-        // back to top of list, since all bets are off about positioning
+        // back to default list position, 
+        // since all bets are off about positioning
         // with all the new list members that might be added
+        if( strcmp( mAppliedSearchWords, "" ) == 0 ) {
+            // no filter words
+            // reset us back to our neighborhood on the house list
+            mCurrentSkip = -1;
+            }
+
         refreshList( true, false );
         }
     }
@@ -189,7 +223,8 @@ void RobPickList::refreshList( char inPreserveSearch,
         mSearchField.setText( mAppliedSearchWords );
         }
     
-    if( ! inPreservePosition ) {
+    if( ! inPreservePosition && mCurrentSkip != -1 ) {
+        // reset list, and not already resetting it to our neighborhood
         mCurrentSkip = 0;
         }
 
@@ -225,14 +260,24 @@ void RobPickList::refreshList( char inPreserveSearch,
         clearIgnoreListParameter = stringDuplicate( "" );
         }
     
+    char *skipString;
+    
+    if( mCurrentSkip != -1 ) {
+        skipString = autoSprintf( "&skip=%d", mCurrentSkip );
+        }
+    else {
+        skipString = stringDuplicate( "" );
+        }
+    
 
     char *actionString = autoSprintf( 
-        "action=%s&skip=%d&limit=%d&name_search=%s%s%s&user_id=%d"
+        "action=%s%s&limit=%d&name_search=%s%s%s&user_id=%d"
         "&%s",
-        action, mCurrentSkip, linesPerPage, mAppliedSearchWords,
+        action, skipString, linesPerPage, mAppliedSearchWords,
         ignoreParameter, clearIgnoreListParameter,
         userID, ticketHash );
 
+    delete [] skipString;
     delete [] ticketHash;
     delete [] ignoreParameter;
     delete [] clearIgnoreListParameter;
@@ -449,8 +494,9 @@ void RobPickList::step() {
                             *( lines->getElement( lines->size() - 2  ) );
                     
                         int numRead = 
-                            sscanf( line, "%d", &( mArePagesLeft ) );
-                        if( numRead != 1 ) {
+                            sscanf( line, "%d#%d", &( mArePagesLeft ), 
+                                    &( mCurrentSkip ) );
+                        if( numRead != 2 ) {
                             badParse = true;
                             }
                         

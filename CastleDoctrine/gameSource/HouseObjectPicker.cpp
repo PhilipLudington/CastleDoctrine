@@ -39,6 +39,8 @@ HouseObjectPicker::HouseObjectPicker( double inX, double inY,
         : PageComponent( inX, inY ),
           mHover( false ),
           mDragOver( false ),
+          mDropDownOpen( false ),
+          mHoverIndex( -1 ),
           mShowTools( inTools ), 
           mSpriteScale( 1 / 32.0 ),
           mShouldShowGridView( false ),
@@ -47,6 +49,7 @@ HouseObjectPicker::HouseObjectPicker( double inX, double inY,
           mUpButton( "up.tga", -1.25, 1, mPixWidth ), 
           mDownButton( "down.tga", -1.25, -1, mPixWidth ),
           mGridViewButton( "gridView.tga", 1.25, 1, mPixWidth ),
+          mMoreSprite( loadSprite( "more.tga" ) ),
           // blank in place for pickers that don't use it (like tool picker)
           mWifeName( stringDuplicate( "" ) ) {
 
@@ -113,20 +116,58 @@ HouseObjectPicker::~HouseObjectPicker() {
     if( mWifeName != NULL ) {
         delete [] mWifeName;
         }
+
+    freeSprite( mMoreSprite );
     }
 
 
 
 
 void HouseObjectPicker::triggerToolTip() {
+
+    if( mHoverIndex == -2 ) {
+        // over MORE button
+        
+        int extra = 
+            mObjectList.size() - 1 
+            - ( mSelectedIndex + getDropDownNumCells() );
+       
+        const char *key;
+        
+        if( mShowTools ) {
+            if( extra > 1 ) {
+                key = "moreButtonTools";
+                }
+            else {
+                key = "moreButtonTool";
+                }
+            }
+        else {
+            if( extra > 1 ) {
+                key = "moreButtonObjects";
+                }
+            else {
+                key = "moreButtonObject";
+                }
+            }
+            
+
+        char *tip = autoSprintf( translate( key ), extra );
+        setToolTip( tip );
+        delete [] tip;
+        
+        return;
+        }
+    
+
     if( mShowTools ) {
         setToolTip( getToolDescription( 
-                        mObjectList.getElement( mSelectedIndex )->id ) );
+                        mObjectList.getElement( mHoverIndex )->id ) );
         }
     else {
         char *description = 
             getObjectDescription( 
-                mObjectList.getElement( mSelectedIndex )->id, 
+                mObjectList.getElement( mHoverIndex )->id, 
                 0,
                 mWifeName );
         
@@ -143,6 +184,7 @@ void HouseObjectPicker::actionPerformed( GUIComponent *inTarget ) {
     
     if( inTarget == &mUpButton ) {
         mSelectedIndex --;
+        mHoverIndex = mSelectedIndex;
         mDownButton.setVisible( true );
         if( mSelectedIndex == 0 ) {
             mUpButton.setVisible( false );
@@ -151,6 +193,7 @@ void HouseObjectPicker::actionPerformed( GUIComponent *inTarget ) {
         }
     else if( inTarget == &mDownButton ) {
         mSelectedIndex ++;
+        mHoverIndex = mSelectedIndex;
         mUpButton.setVisible( true );
         if( mSelectedIndex == mObjectList.size() - 1 ) {
             mDownButton.setVisible( false );
@@ -159,6 +202,11 @@ void HouseObjectPicker::actionPerformed( GUIComponent *inTarget ) {
         }
     else if( inTarget == &mGridViewButton ) {
         mShouldShowGridView = true;
+        
+        mHover = false;
+        mDropDownOpen = false;
+        setHogMouseEvents( false );
+
         fireActionPerformed( this );
         }
     
@@ -180,6 +228,7 @@ void HouseObjectPicker::setSelectedObject( int inObjectID ) {
         
         if( r->id == inObjectID ) {
             mSelectedIndex = i;
+            mHoverIndex = i;
             // auto-move it to top of stack
             useSelectedObject();
 
@@ -225,6 +274,7 @@ void HouseObjectPicker::useSelectedObject() {
     mObjectList.push_front( r );
     
     mSelectedIndex = 0;
+    mHoverIndex = 0;
     
     mUpButton.setVisible( false );
     mDownButton.setVisible( true );
@@ -237,94 +287,122 @@ void HouseObjectPicker::step() {
 
 
 
+
+
+void HouseObjectPicker::drawBox( doublePair inPosition, 
+                                 double inVerticalRadius ) {
+    
+
+    // color like a reactive button if we have only 1 item
+    char oneItem = ( mObjectList.size() == 1 );
+    if( oneItem && mHover && ! mDragOver ) {    
+        setDrawColor( 0.75, 0.75, 0.75, 1 );
+        }
+    else if( oneItem && mDragOver ) {
+        setDrawColor( 0.25, 0.25, 0.25, 1 );
+        }
+    else {
+        setDrawColor( 0.5, 0.5, 0.5, 1 );
+        }
+        
+    drawRect( inPosition, 1, inVerticalRadius );
+        
+        
+        
+
+    if( mShowTools ) {
+        // gray background to match backpack slot backgrounds
+            
+        if( oneItem && mDragOver ) {
+            setDrawColor( 0.1, 0.1, 0.1, 1 );
+            }
+        else {
+            setDrawColor( 0.25, 0.25, 0.25, 1 );
+            }
+        }
+    else {
+        // no drag-over darkening behavior
+        // (already black)
+        setDrawColor( 0, 0, 0, 1 );
+        }
+        
+    drawRect( inPosition, 1 - mPixWidth, inVerticalRadius - mPixWidth );
+    }
+
+
+
+void HouseObjectPicker::drawObjectInBox( int inSelectedIndex,
+                                         doublePair inPosition ) {
+    
+    ObjectPriceRecord *r = mObjectList.getElement( inSelectedIndex );
+
+    int orientation = 0;
+
+    if( !mShowTools ) {    
+        int numOrientations = getNumOrientations( r->id, 0 );
+            
+        if( numOrientations == 4 ) {
+            // default to left-facing
+            orientation = 3;
+            }
+        if( numOrientations == 2 ) {
+            // default to horizontal
+            orientation = 1;
+            }
+        }
+        
+        
+        
+    SpriteHandle sprite;
+    SpriteHandle underSprite = NULL;
+    SpriteHandle behindSprite = NULL;
+        
+    if( mShowTools ) {
+        sprite = getToolSprite( r->id );
+        }
+    else {
+        sprite = getObjectSprite( r->id, orientation, 0 );
+            
+        if( isUnderSpritePresent( r->id, 0 ) ) {
+            underSprite = getObjectSpriteUnder( r->id, orientation, 0 );
+            }
+        if( isBehindSpritePresent( r->id, 0 ) ) {
+            behindSprite = getObjectSpriteBehind( r->id, orientation, 0 );
+            }
+        }
+    
+
+    drawBox( inPosition );
+    
+    if( underSprite != NULL ) {
+        // darken a bit
+        setDrawColor( 0.75, 0.75, 0.75, 1 );
+        drawSprite( underSprite, inPosition, mSpriteScale );
+        }
+
+    setDrawColor( 1, 1, 1, 1 );
+        
+    if( behindSprite != NULL ) {
+        drawSprite( behindSprite, inPosition, mSpriteScale );
+        }
+
+    drawSprite( sprite, inPosition, mSpriteScale );
+
+    
+    }
+
+
+
+
 void HouseObjectPicker::draw() {
 
     if( mSelectedIndex >= 0 ) {
-        ObjectPriceRecord *r = mObjectList.getElement( mSelectedIndex );
-
-        int orientation = 0;
-
-        if( !mShowTools ) {    
-            int numOrientations = getNumOrientations( r->id, 0 );
-            
-            if( numOrientations == 4 ) {
-                // default to left-facing
-                orientation = 3;
-                }
-            if( numOrientations == 2 ) {
-                // default to horizontal
-                orientation = 1;
-                }
-            }
-        
-        
-        
-        SpriteHandle sprite;
-        SpriteHandle underSprite = NULL;
-        SpriteHandle behindSprite = NULL;
-        
-        if( mShowTools ) {
-            sprite = getToolSprite( r->id );
-            }
-        else {
-            sprite = getObjectSprite( r->id, orientation, 0 );
-            
-            if( isUnderSpritePresent( r->id, 0 ) ) {
-                underSprite = getObjectSpriteUnder( r->id, orientation, 0 );
-                }
-            if( isBehindSpritePresent( r->id, 0 ) ) {
-                behindSprite = getObjectSpriteBehind( r->id, orientation, 0 );
-                }
-            }
         
         doublePair center = { 0, 0 };
-
-
-        // color like a reactive button if we have only 1 item
-        char oneItem = ( mObjectList.size() == 1 );
-        if( oneItem && mHover && ! mDragOver ) {    
-            setDrawColor( 0.75, 0.75, 0.75, 1 );
-            }
-        else if( oneItem && mDragOver ) {
-            setDrawColor( 0.25, 0.25, 0.25, 1 );
-            }
-        else {
-            setDrawColor( 0.5, 0.5, 0.5, 1 );
-            }
         
-        drawSquare( center, 1 );
+        drawObjectInBox( mSelectedIndex, center );
         
-        if( mShowTools ) {
-            // gray background to match backpack slot backgrounds
-            
-            if( oneItem && mDragOver ) {
-                setDrawColor( 0.1, 0.1, 0.1, 1 );
-                }
-            else {
-                setDrawColor( 0.25, 0.25, 0.25, 1 );
-                }
-            }
-        else {
-            // no drag-over darkening behavior
-            // (already black)
-            setDrawColor( 0, 0, 0, 1 );
-            }
-        
-        drawSquare( center, 1 - mPixWidth );
-
-        if( underSprite != NULL ) {
-            // darken a bit
-            setDrawColor( 0.75, 0.75, 0.75, 1 );
-            drawSprite( underSprite, center, mSpriteScale );
-            }
-
-        setDrawColor( 1, 1, 1, 1 );
-        
-        if( behindSprite != NULL ) {
-            drawSprite( behindSprite, center, mSpriteScale );
-            }
-
-        drawSprite( sprite, center, mSpriteScale );
+        ObjectPriceRecord *r = mObjectList.getElement( mSelectedIndex );
 
         char *priceString = autoSprintf( "$%d", r->price );
         
@@ -342,6 +420,99 @@ void HouseObjectPicker::draw() {
         mainFont->drawString( priceString, pricePos, align );
 
         delete [] priceString;        
+        }
+
+    if( mDropDownOpen ) {
+        doublePair center = { 0, 0 };
+            
+
+        int numCells = getDropDownNumCells();
+
+        double shadowWidth = 1 + 3 * mPixWidth;
+            
+        double halfPixWidth = mPixWidth / 2;
+
+        char firstBox = true;
+
+        char drawMoreButton = getMoreButtonPresent();
+        
+        int numBoxes = numCells;
+        if( drawMoreButton ) {
+            numBoxes ++;
+            }
+        
+        for( int i=mSelectedIndex+1; 
+             i <= mSelectedIndex + numBoxes; 
+             i++ ) {
+
+            char lastBox = false;
+            
+            if( i == mSelectedIndex + numBoxes ) {
+                lastBox = true;
+                }
+        
+            if( lastBox && drawMoreButton ) {
+                center.y -= 1.5;
+                }
+            else {
+                center.y -= 2;
+                }
+            
+            
+            setDrawColor( 0, 0, 0, .125 );
+
+
+
+            for( int s=0; s<6; s++ ) {
+                
+                double bottom = center.y - 1;
+                
+                if( lastBox && ! drawMoreButton ) {
+                    bottom = center.y - shadowWidth + s * halfPixWidth;
+                    }
+                else if( lastBox && drawMoreButton ) {
+                    bottom =
+                        center.y - (0.5 + 3 * mPixWidth) + s * halfPixWidth;
+                    }
+
+                double top = center.y + 1;
+                
+                if( firstBox ) {
+                    // don't draw shadow over up/down arrows
+                    top = center.y;
+                    }
+
+                if( lastBox && drawMoreButton ) {
+                    top = center.y + 0.5;
+                    }
+
+                drawRect( center.x - shadowWidth + s * halfPixWidth, 
+                          top, 
+                          center.x + shadowWidth - s * halfPixWidth, 
+                          bottom );
+
+                if( firstBox ) {
+                    // draw extra over right edge so shadow covers
+                    // any price that sticks out
+                    drawRect( center.x, 
+                              center.y + 1, 
+                              center.x + shadowWidth - s * halfPixWidth, 
+                              bottom );
+                    }
+                }
+            
+            if( lastBox && drawMoreButton ) {
+                drawBox( center, 0.5 );
+                setDrawColor( 1, 1, 1, 1 );
+                drawSprite( mMoreSprite, center, 1.0 / 16.0 );
+                }
+            else {
+                drawObjectInBox( i, center );
+                }
+            
+            firstBox = false;
+            }
+        
         }
     }
 
@@ -462,9 +633,11 @@ void HouseObjectPicker::setPrices( ObjectPriceRecord *inRecords,
 
     if( mObjectList.size() > 0 ) {
         mSelectedIndex = 0;
+        mHoverIndex = 0;
         }
     else {
         mSelectedIndex = -1;
+        mHoverIndex = -1;
         }
     }
 
@@ -505,17 +678,81 @@ char HouseObjectPicker::isInside( float inX, float inY ) {
 
 
 
+char HouseObjectPicker::isDropDownOpen() {
+    return mDropDownOpen;
+    }
+
+
+
+int HouseObjectPicker::getDropDownNumCells() {
+    int dropDownNumCells = 5;
+    if( mSelectedIndex + dropDownNumCells >= mObjectList.size() ) {
+        dropDownNumCells = mObjectList.size() - mSelectedIndex - 1;
+        }
+    return dropDownNumCells;
+    }
+
+
+
+char HouseObjectPicker::getMoreButtonPresent() {
+    if( getDropDownNumCells() + mSelectedIndex > mObjectList.size() - 2 ) {
+        return false;
+        }
+    return true;
+    }
+
+
+
+double HouseObjectPicker::getMoreButtonExtent() {
+    if( getMoreButtonPresent() ) {
+        return 1;
+        }
+    return 0;
+    }
+
+
+
 void HouseObjectPicker::pointerMove( float inX, float inY ) {
+    
+    
     if( isInside( inX, inY ) ) {
+        mHoverIndex = mSelectedIndex;
         triggerToolTip();
         mHover = true;
+        mDropDownOpen = true;
+        setHogMouseEvents( true );
         }
+    else if( mDropDownOpen &&
+             fabs( inX ) < 1.75 &&
+             inY < 1.75 && 
+             inY > 
+             -( 1.75 + getDropDownNumCells() * 2 + getMoreButtonExtent() ) ) {
+        mHover = false;
+        mDropDownOpen = true;
+        
+        mHoverIndex = mSelectedIndex + ( (int)( -inY + 1 ) / 2 );
+
+        // watch mouse hanging over bottom
+        if( mHoverIndex - mSelectedIndex > getDropDownNumCells() ) {
+            
+            if( getMoreButtonPresent() ) {
+                mHoverIndex = -2;
+                }
+            else {
+                mHoverIndex = mSelectedIndex + getDropDownNumCells();
+                }
+            }
+        triggerToolTip();
+        }
+    
     else {
-        if( mHover ) {
+        if( mHover || mDropDownOpen ) {
             // hover just left
             setToolTip( NULL );
             }
         mHover = false;
+        mDropDownOpen = false;
+        setHogMouseEvents( false );
         }
     }
 
@@ -553,7 +790,51 @@ void HouseObjectPicker::pointerUp( float inX, float inY ) {
     else if( isInside( inX, inY ) ) {
         // click means show grid view (two ways to show grid view)
         mShouldShowGridView = true;
+        mHover = false;
+        mDropDownOpen = false;
+        setHogMouseEvents( false );
         fireActionPerformed( this );
+        }
+    else if( mDropDownOpen &&
+             fabs( inX ) < 1 &&
+             inY < 1 && 
+             inY > 
+             -( 1 + getDropDownNumCells() * 2 + getMoreButtonExtent() ) ) {
+
+        if( inY < -( 1 + getDropDownNumCells() * 2 ) ) {
+            // on more button
+            
+            int extra = 
+                mObjectList.size() - 1 
+                - ( mSelectedIndex + getDropDownNumCells() );
+
+            int jump = getDropDownNumCells();
+
+            if( extra < jump ) {
+                jump = extra;
+                }
+            mSelectedIndex += jump;
+            mUpButton.setVisible( true );
+
+            if( getMoreButtonPresent() ) {
+                triggerToolTip();
+                }
+            else {
+                setToolTip( NULL );
+                }
+            }
+        else {
+            mHover = false;
+            mDropDownOpen = false;
+            setHogMouseEvents( false );
+            
+            mHoverIndex = mSelectedIndex + ( (int)( -inY + 1 ) / 2 );
+            mSelectedIndex = mHoverIndex;
+
+            useSelectedObject();
+
+            fireActionPerformed( this );
+            }
         }
     }
 

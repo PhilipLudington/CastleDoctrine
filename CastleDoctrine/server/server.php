@@ -2,8 +2,19 @@
 
 
 
+// server will tell clients to upgrade to this version
 global $cd_version;
-$cd_version = "30";
+$cd_version = "35";
+
+
+// leave an older version here IF older clients can also connect safely
+// (newer clients must use this old version number in their ticket hash
+//  too).
+// NOTE that if old clients are incompatible, both numbers should be updated.
+global $cd_ticketHashVersion;
+$cd_ticketHashVersion = "35";
+
+
 
 
 global $cd_numBackpackSlots;
@@ -16,7 +27,7 @@ $cd_flushInterval = "0 0:02:0.000";
 
 
 // override the default Notice and Warning handler 
-set_error_handler( cd_noticeAndWarningHandler, E_NOTICE | E_WARNING );
+set_error_handler( "cd_noticeAndWarningHandler", E_NOTICE | E_WARNING );
 
 
 
@@ -85,6 +96,21 @@ if( get_magic_quotes_gpc() ) {
     
 
 
+// Check that the referrer header is this page, or kill the connection.
+// Used to block XSRF attacks on state-changing functions.
+// (To prevent it from being dangerous to surf other sites while you are
+// logged in as admin.)
+// Thanks Chris Cowan.
+function cd_checkReferrer() {
+    global $fullServerURL;
+    
+    if( !isset($_SERVER['HTTP_REFERER']) ||
+        strpos($_SERVER['HTTP_REFERER'], $fullServerURL) !== 0 ) {
+        
+        die( "Bad referrer header" );
+        }
+    }
+
 
 // testing:
 //echo "fsfDENasdfIED"; die();
@@ -100,10 +126,6 @@ $touchedHouseMapHashes = array();
 
 
 
-// all calls need to connect to DB, so do it once here
-cd_connectToDatabase();
-
-// close connection down below (before function declarations)
 
 
 // testing:
@@ -117,6 +139,20 @@ cd_connectToDatabase();
 
 // grab POST/GET variables
 $action = cd_requestFilter( "action", "/[A-Z_]+/i" );
+
+$trackDatabaseStats = true;
+
+if( $action == "" || $action == "cd_setup" ) {
+    // our stats table might not exist yet!
+    $trackDatabaseStats = false;
+    }
+
+
+// all calls need to connect to DB, so do it once here
+cd_connectToDatabase( $trackDatabaseStats );
+
+// close connection down below (before function declarations)
+
 
 
 global $flushDuringClientCalls;
@@ -172,6 +208,8 @@ if( $shutdownMode &&
       $action == "get_self_test_log" ) ) {
 
     echo "SHUTDOWN";
+    global $shutdownMessage;
+    echo "\n$shutdownMessage";
     }
 else if( $action == "version" ) {
     global $cd_version;
@@ -182,6 +220,9 @@ else if( $action == "show_log" ) {
     }
 else if( $action == "clear_log" ) {
     cd_clearLog();
+    }
+else if( $action == "test_admin_call" ) {
+    cd_testAdminCall();
     }
 else if( $action == "check_user" ) {
     cd_checkUser();
@@ -336,7 +377,8 @@ else if( preg_match( "/server\.php/", $_SERVER[ "SCRIPT_NAME" ] ) ) {
         cd_doesTableExist( $tableNamePrefix."son_names" ) &&
         cd_doesTableExist( $tableNamePrefix."daughter_names" ) &&
         cd_doesTableExist( $tableNamePrefix."server_stats" ) &&
-        cd_doesTableExist( $tableNamePrefix."item_purchase_stats" );
+        cd_doesTableExist( $tableNamePrefix."item_purchase_stats" ) &&
+        cd_doesTableExist( $tableNamePrefix."user_stats" );
     
         
     if( $allExist  ) {
@@ -1289,6 +1331,9 @@ function cd_setupDatabase() {
             "stat_date DATE NOT NULL PRIMARY KEY," .
             "unique_users INT NOT NULL DEFAULT 0," .
 
+            "database_connections INT NOT NULL DEFAULT 0," .
+            "max_concurrent_connections INT NOT NULL DEFAULT 0," .
+
             "edit_count INT NOT NULL DEFAULT 0," .
 
             "house_tiles_bought INT NOT NULL DEFAULT 0," .
@@ -1325,6 +1370,8 @@ function cd_setupDatabase() {
 
             "bounties_accumulated INT NOT NULL DEFAULT 0," .
             "bounties_paid INT NOT NULL DEFAULT 0," .
+
+            "max_total_house_value INT NOT NULL DEFAULT 0," .
             
             "self_test_deaths INT NOT NULL DEFAULT 0," .
             "self_test_suicides INT NOT NULL DEFAULT 0," .
@@ -1360,6 +1407,31 @@ function cd_setupDatabase() {
             "price INT NOT NULL DEFAULT 0," .
             "purchase_count INT NOT NULL DEFAULT 0, ".
             "PRIMARY KEY( stat_date, object_id, price ) ) ENGINE = INNODB;";
+        
+
+        $result = cd_queryDatabase( $query );
+
+
+        echo "<B>$tableName</B> table created<BR>";       
+        }
+    else {
+        echo "<B>$tableName</B> table already exists<BR>";
+        }
+
+
+
+    // stats collected every flush interval
+    $tableName = $tableNamePrefix . "user_stats";
+
+    if( ! cd_doesTableExist( $tableName ) ) {
+
+        // doesn't need to be innodb, because rows never change
+        $query =
+            "CREATE TABLE $tableName(" .
+            "stat_time DATETIME NOT NULL PRIMARY KEY," .
+            "users_last_five_minutes INT NOT NULL," .
+            "users_last_hour INT NOT NULL," .
+            "users_last_day INT NOT NULL );";
         
 
         $result = cd_queryDatabase( $query );
@@ -1449,7 +1521,7 @@ function cd_showLog() {
     
     for( $i=0; $i<$numRows; $i++ ) {
         $time = mysql_result( $result, $i, "entry_time" );
-        $entry = mysql_result( $result, $i, "entry" );
+        $entry = htmlspecialchars( mysql_result( $result, $i, "entry" ) );
 
         echo "<b>$time</b>:<br><pre>$entry</pre><hr>\n";
         }
@@ -1481,13 +1553,34 @@ function cd_clearLog() {
 
 
 
+function cd_testAdminCall() {
+    cd_checkPassword( "test_admin_call" );
+
+    echo "[<a href=\"server.php?action=show_data" .
+         "\">Main</a>]<br><br><br>";
+
+    echo "Calling admin...<br><br>";
+    
+    cd_callAdmin(
+        "This is a test of the administrator emergency call system.  ".
+        "If you can hear this, it's working." );
+    }
+
+
+
 
 
 
 // check if we should flush stale checkouts from the database
 // do this once every 2 minutes
 function cd_checkForFlush() {
-    global $tableNamePrefix, $chillTimeout, $forcedIgnoreTimeout;
+    global $tableNamePrefix, $chillTimeout, $forcedIgnoreTimeout, $gracePeriod;
+
+
+    if( $gracePeriod ) {
+        // skip flushing entirely during grace period
+        }
+    
 
     $tableName = "$tableNamePrefix"."server_globals";
     
@@ -1558,6 +1651,19 @@ function cd_checkForFlush() {
 
         cd_log( "Flush operation starting up." );
         cd_queryDatabase( "COMMIT;" );
+
+        
+        $usersDay = cd_countUsersTime( '1 0:00:00' );
+        $usersHour = cd_countUsersTime( '0 1:00:00' );
+        $usersFiveMin = cd_countUsersTime( '0 0:05:00' );
+
+        $query = "INSERT INTO $tableNamePrefix"."user_stats".
+            "( stat_time, users_last_five_minutes, users_last_hour, ".
+            "  users_last_day ) ".
+            "VALUES( CURRENT_TIMESTAMP, ".
+            "        $usersFiveMin, $usersHour, $usersDay );";
+        cd_queryDatabase( $query );
+        
         
 
         global $tableNamePrefix;
@@ -2024,7 +2130,11 @@ function cd_checkForFlush() {
             "WHERE  chill_start_time < ".
             "       SUBTIME( CURRENT_TIMESTAMP, '$chillTimeout' );";
 
-        $result = cd_queryDatabase( $query );
+        // watch for deadlock here
+        while( cd_queryDatabase( $query, 0 ) == FALSE ) {
+            // sleep before retrying
+            sleep( 1 );
+            }
 
         $staleChillsRemoved = mysql_affected_rows();
 
@@ -2585,7 +2695,7 @@ function cd_processStaleCheckouts( $user_id, $house_id_to_skip = -1 ) {
     if( $staleShadowRobberyCount ) {
         // clear all the robberies themselves
 
-        $query = "SELECT gallery_contents ".
+        $query = "SELECT gallery_contents, carried_gallery_contents ".
             "FROM $tableNamePrefix"."houses_owner_died ".
             "WHERE user_id = '$last_robbed_owner_id' AND ".
             "robbing_user_id = '$user_id';";
@@ -2595,6 +2705,7 @@ function cd_processStaleCheckouts( $user_id, $house_id_to_skip = -1 ) {
         $row = mysql_fetch_array( $result, MYSQL_ASSOC );
         
         $gallery_contents = $row[ "gallery_contents" ];
+        $carried_gallery_contents = $row[ "carried_gallery_contents" ];
         $owner_id = $last_robbed_owner_id;
         
         // remove this house from the shadow table
@@ -2611,6 +2722,7 @@ function cd_processStaleCheckouts( $user_id, $house_id_to_skip = -1 ) {
         
         // return any remaining gallery stuff to auction house
         cd_returnGalleryContents( $gallery_contents );
+        cd_returnGalleryContents( $carried_gallery_contents );
         }
 
 
@@ -2968,6 +3080,17 @@ function cd_startEditHouse() {
         $wife_loot_value = 0;
         $loot_value = $total_loot_value;
         }
+
+    $creationTimeUpdate = "";
+    if( $edit_count == 0 ) {
+        // the house has not been edited yet
+        // in the case of a "quit house" that the owner left
+        // during last session, the creation time could be very old
+        // update the creation time here to now, because this
+        // is when the owner really started to work on the house
+        $creationTimeUpdate =
+            " creation_time = CURRENT_TIMESTAMP, ";
+        }
     
     $query = "UPDATE $tableNamePrefix"."houses SET ".
         "edit_checkout = 1, last_ping_time = CURRENT_TIMESTAMP, ".
@@ -2980,6 +3103,7 @@ function cd_startEditHouse() {
         "carried_loot_value = 0, ".
         "carried_vault_contents = '#', ".
         "carried_gallery_contents = '#', ".
+        "$creationTimeUpdate".
         // reset payment counts
         "payment_count = 0, you_paid_total = 0, wife_paid_total = 0 ".
         "WHERE user_id = $user_id;";
@@ -3003,13 +3127,7 @@ function cd_startEditHouse() {
     $last_price_list_number = $row[ "last_price_list_number" ];
 
 
-    $last_price_list_number ++;
-
-
-    $query = "UPDATE $tableNamePrefix"."users SET ".
-        "last_price_list_number = '$last_price_list_number' ".
-        "WHERE user_id = $user_id;";
-    cd_queryDatabase( $query );
+    
 
     
     
@@ -3250,6 +3368,25 @@ function cd_idQuantityToResaleValue( $inIDQuantityString, $inPriceArray ) {
 
 
 
+// computes purchase cost of items in an ID:quantity list string
+function cd_idQuantityToPurchaseCost( $inIDQuantityString, $inPriceArray ) {
+    global $resaleRate;
+    
+    $quantityArray = cd_idQuantityStringToArray( $inIDQuantityString );
+
+    $totalValue = 0;
+
+
+    foreach( $quantityArray as $id => $quantity ) {
+
+        $totalValue += $quantity * $inPriceArray[$id];
+        }
+    
+    return $totalValue;
+    }
+
+
+
 // count total sum of quantities in string
 function cd_idQuantityStringCount( $inIDQuantityString ) {
 
@@ -3436,6 +3573,23 @@ function cd_endEditHouse() {
     // ensures that a dovetailed flush won't kick us out
     // also updates chill and force-ignore start times one more time
     cd_pingHouseInternal( $user_id );
+
+
+    
+    // to avoid house cache misses, EVER
+    // stick this map in the cache now, as a separate transaction
+    // before doing anything else
+    //
+    // For some reason, perhaps due to strange transaction interleaving,
+    // a checked-in house's map is occasionally NOT in the cache,
+    // even though the hash has been computed and stored
+    // This has only been seen happening at the end of a robbery, BUT
+    // the map shows up in the cache later, after the robbery end fails.
+    // Furthermore, it looks like an interleaved house edit is causing
+    // it.  Thus, the house edit completes, and the house is unlocked,
+    // BEFORE the map is added to the cache for some reason.
+    $house_map = cd_requestFilter( "house_map", "/[#0-9,:!]+/" );
+    $house_map_hash = cd_storeHouseMap( $house_map );
     
     
     cd_queryDatabase( "SET AUTOCOMMIT=0" );
@@ -3495,7 +3649,7 @@ function cd_endEditHouse() {
     $total_loot_value = $loot_value + $wife_loot_value;
     
     
-    $house_map = cd_requestFilter( "house_map", "/[#0-9,:!]+/" );
+    
 
     $vault_contents = cd_requestFilter( "vault_contents", "/[#0-9:]+/" );
 
@@ -4377,18 +4531,25 @@ function cd_endEditHouse() {
                                     $self_test_move_list,
                                     0,
                                     
-                                    &$success,
-                                    &$wife_killed_robber,
-                                    &$wife_killed,
-                                    &$wife_robbed,
-                                    &$family_killed_count,
-                                    &$end_backpack_contents,
-                                    &$end_house_map );
+                                    $success,
+                                    $wife_killed_robber,
+                                    $wife_killed,
+                                    $wife_robbed,
+                                    $family_killed_count,
+                                    $end_backpack_contents,
+                                    $end_house_map );
 
             if( $simResult == 0 ) {
                 
                 cd_log( "House check-in with failed self-test simulation".
                         " denied" );
+                cd_log(
+                    "Simulation called with these parameters: ".
+                    "house_map = $house_map , ".
+                    "backpack_contents = # , ".
+                    "move_list = $self_test_move_list , ".
+                    "wife_loot_value = 0 " );
+
                 cd_transactionDeny();
                 return;
                 }
@@ -4408,7 +4569,7 @@ function cd_endEditHouse() {
             }
         }
     
-    $house_map_hash = cd_storeHouseMap( $house_map );
+    
     $self_test_house_map_hash = cd_storeHouseMap( $self_test_house_map );
     
     $backpack_value_estimate =
@@ -4462,6 +4623,19 @@ function cd_endEditHouse() {
     cd_queryDatabase( "COMMIT;" );
     cd_queryDatabase( "SET AUTOCOMMIT=1" );
 
+    
+    // house checked back in, further end_edit_house calls (like retries)
+    // will not make it through to this point
+    // Safe to update last_price_list_number now
+    $last_price_list_number ++;
+
+    $query = "UPDATE $tableNamePrefix"."users SET ".
+        "last_price_list_number = '$last_price_list_number' ".
+        "WHERE user_id = $user_id;";
+    cd_queryDatabase( $query );
+
+    
+    
     cd_incrementStat( "house_tiles_bought", $numTilesBought );
     cd_incrementStat( "tools_bought", $numToolsBought );
 
@@ -4498,6 +4672,7 @@ function cd_endEditHouse() {
     // change counts as an edit
     cd_incrementStat( "edit_count" );
     
+    cd_trackMaxTotalHouseValue();
 
     echo "OK";    
     }
@@ -4539,8 +4714,13 @@ function cd_pingHouseInternal( $user_id ) {
             "         TIMEDIFF( CURRENT_TIMESTAMP, '$last_ping_time' ) ) ".
             "WHERE house_user_id = $house_user_id ".
             "      AND chill = 1;";
-        $result = cd_queryDatabase( $query );
-
+        
+        // watch for deadlock with flush call here
+        while( cd_queryDatabase( $query, 0 ) == FALSE ) {
+            // sleep before trying again
+            sleep( 1 );
+            }
+        
         // any force-ignore on this house have their expiration postponed
         $query = "UPDATE $tableNamePrefix"."ignore_houses  SET ".
             "forced_start_time = ".
@@ -4631,7 +4811,8 @@ function cd_pingHouse() {
             $result = cd_queryDatabase( $query );
             $secondsLeft = mysql_result( $result, 0, 0 );
 
-            if( $secondsLeft <= 0 ) {
+            global $gracePeriod;
+            if( $secondsLeft <= 0 && ! $gracePeriod ) {
                 echo "OUT_OF_TIME";
                 return;
                 }
@@ -4639,6 +4820,11 @@ function cd_pingHouse() {
         
         
         echo "OK";
+
+        global $shutdownMode;
+        if( $shutdownMode ) {
+            echo "\nSERVER_GOING_DOWN";
+            }
         }
     else {
         echo "FAILED";
@@ -4676,6 +4862,11 @@ function cd_startSelfTest() {
     
     if( cd_getMySQLRowsMatchedByUpdate() == 1 ) {
         echo "OK";
+        
+        global $shutdownMode;
+        if( $shutdownMode ) {
+            echo "\nSERVER_GOING_DOWN";
+            }
         }
     else {
         echo "FAILED";
@@ -4713,6 +4904,11 @@ function cd_endSelfTest() {
     
     if( cd_getMySQLRowsMatchedByUpdate() == 1 ) {
         echo "OK";
+        
+        global $shutdownMode;
+        if( $shutdownMode ) {
+            echo "\nSERVER_GOING_DOWN";
+            }
         }
     else {
         echo "FAILED";
@@ -4737,7 +4933,14 @@ function cd_listHouses() {
     cd_processStaleCheckouts( $user_id );
     
 
-    $skip = cd_requestFilter( "skip", "/\d+/", 0 );
+    $skip = cd_requestFilter( "skip", "/\d+/", "" );
+
+    $findGoodSkip = false;
+
+    if( $skip == "" ) {
+        $findGoodSkip = true;
+        $skip = 0;
+        }
     
     $limit = cd_requestFilter( "limit", "/\d+/", 20 );
     $name_search = cd_requestFilter( "name_search", "/[a-z ]+/i" );
@@ -4800,6 +5003,50 @@ function cd_listHouses() {
     //  by joining the houses table to itself)
     $tableName = $tableNamePrefix ."houses";
 
+    global $newHouseListingDelayTime;
+
+
+    $whereClause =
+        "WHERE houses.user_id != '$user_id' AND houses.blocked='0' ".
+        "AND houses.rob_checkout = 0 AND houses.edit_checkout = 0 ".
+        "AND houses.edit_count != 0 ".
+        "AND ( houses.value_estimate != 0 OR houses.edit_count > 0 ) ".
+        "AND houses.creation_time < SUBTIME( CURRENT_TIMESTAMP, ".
+        "                                    '$newHouseListingDelayTime' ) ".
+        "$searchClause ".
+        "AND houses.user_id NOT IN ".
+        "( SELECT house_user_id FROM $tableNamePrefix"."ignore_houses ".
+        "  WHERE user_id = $user_id AND started = 1 ) ";
+
+
+    if( $findGoodSkip ) {
+        $query = "SELECT value_estimate, backpack_contents FROM $tableName ".
+            "WHERE user_id = $user_id;";
+        $result = cd_queryDatabase( $query );
+        
+        $value_estimate = mysql_result( $result, 0, "value_estimate" );
+        $backpack_contents = mysql_result( $result, 0, "backpack_contents" );
+
+        $backpack_cost = cd_idQuantityToPurchaseCost( $backpack_contents,
+                                                      cd_getPriceArray() );
+
+        $totalWealth = $value_estimate + $backpack_cost;
+        
+        $query = "SELECT COUNT(*) FROM $tableName as houses ".
+            $whereClause .
+            "AND houses.value_estimate >= $totalWealth;";
+
+        // query for count.  Find good skip that is a multiple of LIMIT
+        $result = cd_queryDatabase( $query );
+        $numBeforeGoodSkip = mysql_result( $result, 0, 0 );
+
+        $numPagesToSkip = floor($numBeforeGoodSkip / $limit);
+
+        $skip = $numPagesToSkip * $limit;
+        }
+    
+    
+    
     // get one extra, beyond requested limit, to detect presence
     // of additional pages beyond limit    
     $query_limit = $limit + 1;
@@ -4815,14 +5062,7 @@ function cd_listHouses() {
         "LEFT JOIN $tableNamePrefix"."chilling_houses as chills ".
         "     ON houses.user_id = chills.house_user_id AND ".
         "        chills.user_id = '$user_id' ".
-        "WHERE houses.user_id != '$user_id' AND houses.blocked='0' ".
-        "AND houses.rob_checkout = 0 AND houses.edit_checkout = 0 ".
-        "AND houses.edit_count != 0 ".
-        "AND ( houses.value_estimate != 0 OR houses.edit_count > 0 ) ".
-        "$searchClause ".
-        "AND houses.user_id NOT IN ".
-        "( SELECT house_user_id FROM $tableNamePrefix"."ignore_houses ".
-        "  WHERE user_id = $user_id AND started = 1 ) ".
+        $whereClause .
         "ORDER BY houses.value_estimate DESC, houses.rob_attempts DESC ".
         "LIMIT $skip, $query_limit;";
 
@@ -4865,10 +5105,10 @@ function cd_listHouses() {
         }
     
     if( $numRows > $limit ) {
-        echo "1\n";
+        echo "1#$skip\n";
         }
     else {
-        echo "0\n";
+        echo "0#$skip\n";
         }
     echo "OK";
     }
@@ -4957,6 +5197,18 @@ function cd_mapNameToUserID( $inCharacterName ) {
     if( mysql_numrows( $result ) != 0 ) {        
         $user_id = mysql_result( $result, 0, "user_id" );    
         }
+    else {
+        // try shadow table
+        $query = "SELECT user_id FROM $tableNamePrefix"."houses_owner_died ".
+            "WHERE character_name = '$inCharacterName';";
+
+        $result = cd_queryDatabase( $query );
+    
+        if( mysql_numrows( $result ) != 0 ) {        
+            $user_id = mysql_result( $result, 0, "user_id" );        
+            }
+        }
+    
     return $user_id;
     }
 
@@ -4988,7 +5240,8 @@ function cd_startRobHouse() {
     $to_rob_user_id = cd_mapNameToUserID( $to_rob_character_name );
 
     if( $to_rob_user_id == -1 ) {
-        // requested character name gone, assume died and house reclaimed
+        // requested character name gone, and not in shadow table either,
+        // assume died and house reclaimed
         echo "RECLAIMED";
         return;
         }
@@ -5036,7 +5289,8 @@ function cd_startRobHouse() {
 
     $backpack_contents = mysql_result( $result, 0, "backpack_contents" );
 
-    
+
+    global $newHouseListingDelayTime;
     
     // automatically ignore blocked users and houses already checked
     // out for robbery by another player
@@ -5055,6 +5309,9 @@ function cd_startRobHouse() {
         "AND edit_count != 0 ".
         "AND ( value_estimate != 0 OR edit_count > 0 ) ".
         "AND ( rob_checkout = 0 OR robbing_user_id = $user_id ) ".
+        "AND character_name = '$to_rob_character_name' ".
+        "AND creation_time < SUBTIME( CURRENT_TIMESTAMP, ".
+        "                             '$newHouseListingDelayTime' ) ".
         "FOR UPDATE;";
 
     $result = cd_queryDatabase( $query );
@@ -5062,10 +5319,30 @@ function cd_startRobHouse() {
     $numRows = mysql_numrows( $result );
     
     if( $numRows < 1 ) {
-        // don't log this, because it happens a lot (when someone else
-        // snatches the house first)
-        cd_transactionDeny( false );
-        return;
+
+        // try query on shadow table too, in case user already checked this
+        // house out in a previous request that may have timed out (and the
+        // owner may have since died)
+        // thus, the user may have a shadow-table house checked out already!
+        $mainTableName = "$tableNamePrefix"."houses";
+        $shadowTableName = "$tableNamePrefix"."houses_owner_died";
+    
+        // point same query at shadow table
+        $query = preg_replace( "/$mainTableName/", "$shadowTableName",
+                               $query );
+
+        $result = cd_queryDatabase( $query );
+        
+        $numRows = mysql_numrows( $result );
+
+        if( $numRows < 1 ) {
+            // not found in main OR shadow
+            
+            // don't log this, because it happens a lot (when someone else
+            // snatches the house first)
+            cd_transactionDeny( false );
+            return;
+            }
         }
     $row = mysql_fetch_array( $result, MYSQL_ASSOC );
 
@@ -5208,7 +5485,9 @@ function cd_endRobHouse() {
     $result = cd_queryDatabase( $query );
     $secondsLeft = mysql_result( $result, 0, 0 );
 
-    if( $secondsLeft <= 0 ) {
+    global $gracePeriod;
+    
+    if( $secondsLeft <= 0 && ! $gracePeriod ) {
         cd_processStaleCheckouts( $user_id );
         echo "OUT_OF_TIME";
         return;
@@ -5277,6 +5556,38 @@ function cd_endRobHouse() {
     $reachedVaultRecently = mysql_result( $result, 0, 0 );
 
 
+
+
+    $map_encryption_key = cd_requestFilter( "map_encryption_key", "/\S+/" );
+    // in base64
+    $encrypted_house_map = cd_requestFilter( "encrypted_house_map",
+                                             "/[A-Za-z0-9\/+=]+/" );
+
+    $house_map = cd_sha1Decrypt( $map_encryption_key, $encrypted_house_map );
+
+    if( $success == 1 ||
+        $family_killed_count > 0 ) {
+
+        // This is a damage-saving robbery, at least according to the player.
+        // We haven't verified this yet through simulation, BUT
+        // we should premptively store the house map in the cache
+        // here before starting a transaction.
+
+        // otherwise, there is a chance that the new map will NOT be in the
+        // cache for a moment during the commit (but the house table will
+        // be updated to contain that new hash)
+        
+        // never store house map with "empty vault" state in place
+        // because vault status can change separately from map changing
+        $house_map_no_empty_vault =
+            preg_replace( "/#999:2!#/", "#999#", $house_map );
+        
+        cd_storeHouseMap( $house_map_no_empty_vault );
+        }
+
+
+
+    
     
     
     cd_queryDatabase( "SET AUTOCOMMIT=0" );
@@ -5303,6 +5614,7 @@ function cd_endRobHouse() {
         "house_map_hash, user_id, character_name, ".
         "wife_name, son_name, daughter_name, ".
         "loot_value, vault_contents, gallery_contents, ".
+        "carried_gallery_contents, ".
         "rob_attempts, robber_deaths, consecutive_rob_success_count, ".
         "edit_count, payment_count, wife_paid_total, you_paid_total ".
         "FROM $tableNamePrefix"."houses ".
@@ -5497,13 +5809,6 @@ function cd_endRobHouse() {
     
 
     
-    $map_encryption_key = cd_requestFilter( "map_encryption_key", "/\S+/" );
-    // in base64
-    $encrypted_house_map = cd_requestFilter( "encrypted_house_map",
-                                             "/[A-Za-z0-9\/+=]+/" );
-
-    $house_map = cd_sha1Decrypt( $map_encryption_key, $encrypted_house_map );
-    
     
     
     $vault_loot_value = $row[ "loot_value" ];
@@ -5516,6 +5821,7 @@ function cd_endRobHouse() {
         cd_idQuantityNormalizeString( $house_vault_contents );
     
     $house_gallery_contents = $row[ "gallery_contents" ];
+    $house_carried_gallery_contents = $row[ "carried_gallery_contents" ];
     
     $amountTaken = 0;
     $stuffTaken = $house_vault_contents;
@@ -5621,17 +5927,24 @@ function cd_endRobHouse() {
                                 $move_list,
                                 $wife_loot_value,
                                     
-                                &$sim_success,
-                                &$sim_wife_killed_robber,
-                                &$sim_wife_killed,
-                                &$sim_wife_robbed,
-                                &$sim_family_killed_count,
-                                &$sim_end_backpack_contents,
-                                &$sim_end_house_map );
+                                $sim_success,
+                                $sim_wife_killed_robber,
+                                $sim_wife_killed,
+                                $sim_wife_robbed,
+                                $sim_family_killed_count,
+                                $sim_end_backpack_contents,
+                                $sim_end_house_map );
 
         if( $simResult == 0 ) {       
             cd_log( "Robbery end with failed robbery simulation".
                     " denied" );
+            cd_log(
+                "Simulation called with these parameters: ".
+                "old_house_map = $old_house_map , ".
+                "old_backpack_contents = $old_backpack_contents , ".
+                "move_list = $move_list , ".
+                "wife_loot_value = $wife_loot_value " );
+
             cd_processStaleCheckouts( $user_id );
             cd_transactionDeny();
             return;
@@ -5676,10 +5989,19 @@ function cd_endRobHouse() {
                     "Simulation returned with these results: ".
                     "sim_end_backpack = $sim_end_backpack_contents , ".
                     "sim_end_house_map = $sim_end_house_map " );
+
+                cd_log( "Player-submitted end_house_map = $house_map" );
+
+                // FIXME:
+                // temporary work-around for multiple-leave client bug
+                // this can cause family duplication, so let them
+                // through for now even if sim fails
+                if( ! strstr( $move_list, "#L#L" ) ) {    
+                    cd_processStaleCheckouts( $user_id );
+                    cd_transactionDeny();
+                    return;
+                    }
                 
-                cd_processStaleCheckouts( $user_id );
-                cd_transactionDeny();
-                return;
                 }
             }            
         // else sim result is 2 (connect failed), so we know
@@ -5771,11 +6093,13 @@ function cd_endRobHouse() {
         
 
         // log any robbery where something semi-interesing happened:
+        // if robber died (bounty)
         // if tools were used (or dropped in vault) or if robber took
         // at least 1 step in.
         // (Don't log cases where a robbery carrying nothing stepped in
         //  the door one step and then left)
-        if( strlen( $move_list ) > 1 || $old_backpack_contents != "#" ) {
+        if( $robber_died ||
+            strlen( $move_list ) > 1 || $old_backpack_contents != "#" ) {
         
             // log this robbery too, because it can cause change owner can
             // notice (backpack stuff dropped in the vault)
@@ -6149,6 +6473,7 @@ function cd_endRobHouse() {
         // return any remaining gallery stuff to auction house
         // (this will be an empty return if robbery successful)
         cd_returnGalleryContents( $house_gallery_contents );
+        cd_returnGalleryContents( $house_carried_gallery_contents );
         }
 
 
@@ -6232,7 +6557,14 @@ function cd_endRobHouse() {
     // now execute all pending database updates after lock for
     // target house row has been released
     foreach( $pendingDatabaseUpdateQueries as $query ) {
-        cd_queryDatabase( $query );
+
+        // each of these queries is its own transaction
+        // possible for each one to deadlock on its own
+        
+        while( cd_queryDatabase( $query, 0 ) == FALSE ) {
+            // wait before retrying
+            sleep( 1 );
+            }
         }
 
 
@@ -6274,7 +6606,7 @@ function cd_endRobHouse() {
     
     
 
-    
+    cd_trackMaxTotalHouseValue();
     
     echo $response;
     }
@@ -6392,10 +6724,10 @@ function cd_listLoggedRobberies() {
         }
 
     if( $numRows > $limit ) {
-        echo "1\n";
+        echo "1#$skip\n";
         }
     else {
-        echo "0\n";
+        echo "0#$skip\n";
         }
     echo "OK";
     }
@@ -6581,7 +6913,11 @@ function cd_getSelfTestLog() {
     
 
     $house_owner_id = cd_requestFilter( "house_owner_id", "/\d+/" );
-    
+    $house_owner_character_name =
+        cd_requestFilter( "house_owner_character_name", "/[A-Z_]+/i" );
+
+
+    $owner_user_id = cd_mapNameToUserID( $house_owner_character_name );
     
     
     $query = "SELECT character_name, ".
@@ -6589,7 +6925,7 @@ function cd_getSelfTestLog() {
         "self_test_house_map_hash, self_test_move_list, wife_present, ".
         "wife_loot_value, music_seed ".
         "FROM $tableNamePrefix"."houses ".
-        "WHERE user_id = '$house_owner_id';";
+        "WHERE user_id = '$owner_user_id';";
 
     $result = cd_queryDatabase( $query );
 
@@ -7027,22 +7363,24 @@ function cd_simulateRobbery( $house_map,
                 $responseParts = preg_split( "/\s+/", $response );
 
                 if( count( $responseParts ) == 8 ) {
+
+                    if( $responseParts[0] != "FAILED" ) {
+                        $success = $responseParts[0];
                     
-                    $success = $responseParts[0];
+                        $wife_killed_robber = $responseParts[1];
+                        $wife_killed = $responseParts[2];
+                        $wife_robbed = $responseParts[3];
+                        $family_killed_count = $responseParts[4];
+                        $end_backpack_contents = $responseParts[5];
+                        $end_house_map = $responseParts[6];
                     
-                    $wife_killed_robber = $responseParts[1];
-                    $wife_killed = $responseParts[2];
-                    $wife_robbed = $responseParts[3];
-                    $family_killed_count = $responseParts[4];
-                    $end_backpack_contents = $responseParts[5];
-                    $end_house_map = $responseParts[6];
-                    
-                    return 1;
+                        return 1;
+                        }
                     }
-                else {
-                    // FAILED response from server
-                    return 0;
-                    }
+
+                // FAILED response from server
+                cd_log( "Simulation failed with message: $response" );
+                return 0;
                 }            
             }
 
@@ -7144,6 +7482,41 @@ function cd_verifyTransaction() {
     if( $transactionAlreadyVerified ) {
         return 1;
         }
+
+
+    // first, make sure this is a valid, modern HTTP request
+    if( $_SERVER[ "SERVER_PROTOCOL" ] == "" ||
+        $_SERVER[ "SERVER_PROTOCOL" ] == "HTTP/0.9" ) {
+
+        // sleep to allow client to timeout and retry without forcing
+        // it to deal with this error message
+        sleep( 30 );
+
+        cd_log( "Incomplete HTTP request, SERVER_PROTOCOL= ".
+                $_SERVER[ "SERVER_PROTOCOL" ] );
+        
+        echo "INCOMPLETE";
+        return 0;
+        }
+
+
+    if( $_SERVER[ "REQUEST_METHOD" ] == "POST" &&
+        $_SERVER[ "CONTENT_LENGTH" ] !=
+        strlen( file_get_contents( 'php://input' ) ) ) {
+
+        // sleep to allow client to timeout and retry without forcing
+        // it to deal with this error message
+        sleep( 30 );
+
+        cd_log( "Incomplete HTTP POST body, Content-Length= ".
+                $_SERVER[ "CONTENT_LENGTH" ] . ", but saw body length of ".
+                strlen( file_get_contents( 'php://input' ) ) );
+        
+        echo "INCOMPLETE";
+        return 0;
+        }
+    
+
     
     
     global $tableNamePrefix;
@@ -7199,11 +7572,11 @@ function cd_verifyTransaction() {
     $ticket_id = $row[ "ticket_id" ];
 
 
-    global $sharedClientSecret, $cd_version;
+    global $sharedClientSecret, $cd_ticketHashVersion;
     
     $correct_ticket_hmac = cd_hmac_sha1( $ticket_id,
                                          "$sequence_number" .
-                                         "$cd_version" .
+                                         "$cd_ticketHashVersion" .
                                          $sharedClientSecret );
 
 
@@ -7412,7 +7785,8 @@ function cd_newHouseForUser( $user_id ) {
     // row gap.  In the case of concurrent inserts for the same user_id,
     // the second insert will fail (user_id is the primary key)
     
-    $query = "select user_id, gallery_contents, rob_checkout ".
+    $query = "select user_id, gallery_contents, carried_gallery_contents, ".
+        "rob_checkout ".
         "FROM $tableNamePrefix"."houses ".
         "WHERE user_id = $user_id ".
         "FOR UPDATE;";
@@ -7458,6 +7832,10 @@ function cd_newHouseForUser( $user_id ) {
             // return gallery items to auciton house
             $gallery_contents = mysql_result( $result, 0, "gallery_contents" );
             cd_returnGalleryContents( $gallery_contents );
+
+            $carried_gallery_contents =
+                mysql_result( $result, 0, "carried_gallery_contents" );
+            cd_returnGalleryContents( $carried_gallery_contents );
             }
 
         
@@ -7687,7 +8065,12 @@ function cd_newHouseForUser( $user_id ) {
     // clear chills
     $query = "DELETE FROM $tableNamePrefix"."chilling_houses ".
         "WHERE house_user_id = $user_id;";
-    cd_queryDatabase( $query );
+
+    // watch for deadlock with flush call here
+    while( cd_queryDatabase( $query, 0 ) == FALSE ) {
+        // sleep before trying again
+        sleep( 1 );
+        }
     
     
     // all houses user has been inside recently give the user a chill
@@ -7714,7 +8097,7 @@ function cd_newHouseForUser( $user_id ) {
 
 
 function cd_logout() {
-
+    cd_checkReferrer();
     cd_clearPasswordCookie();
 
     echo "Logged out";
@@ -7743,6 +8126,24 @@ function cd_incrementStat( $inStatColumnName, $inIncrementAmount = 1 ) {
 
 
 
+// update one column's max-stat in stat table for today
+// or creates a row of 0's in the stat table for today (if no row exists)
+// and puts a new max value in that one column.
+function cd_updateMaxStat( $inStatColumnName, $inPossibleNewMax ) {
+    global $tableNamePrefix;
+    
+    $query = "INSERT INTO $tableNamePrefix"."server_stats ".
+        "SET stat_date = CURRENT_DATE, ".
+        "    $inStatColumnName = $inPossibleNewMax ".
+        "ON DUPLICATE KEY UPDATE ".
+        "   $inStatColumnName = GREATEST( $inStatColumnName, ".
+        "                                 $inPossibleNewMax );";
+
+    cd_queryDatabase( $query );
+    }
+
+
+
 function cd_incrementPurchaseCountStat( $inObjectID, $inPrice,
                                         $inIncrementAmount = 1 ) {
     global $tableNamePrefix;
@@ -7756,6 +8157,23 @@ function cd_incrementPurchaseCountStat( $inObjectID, $inPrice,
         "   purchase_count = purchase_count + $inIncrementAmount;";
 
     cd_queryDatabase( $query );
+    }
+
+
+
+
+function cd_trackMaxTotalHouseValue() {
+    
+    global $tableNamePrefix;
+    $query = "SELECT SUM( value_estimate ) ".
+        "FROM $tableNamePrefix"."houses ".
+        "WHERE edit_count !=0;";
+
+    $result = cd_queryDatabase( $query );
+
+    $max_total_house_value_now = mysql_result( $result, 0, 0 );
+
+    cd_updateMaxStat( "max_total_house_value", $max_total_house_value_now );
     }
 
     
@@ -8006,21 +8424,46 @@ function cd_generateHeader() {
 
     $userCount = cd_countUsers();
 
+    $houseCount = cd_countRobbableHouses();
+
+    $result = cd_queryDatabase( "SHOW FULL PROCESSLIST;" );
+    $connectionCount = mysql_numrows( $result );
+
+    global $tableNamePrefix;
+    $usersDay = cd_countUsersTime( '1 0:00:00' );
+    $usersHour = cd_countUsersTime( '0 1:00:00' );
+    $usersFiveMin = cd_countUsersTime( '0 0:05:00' );
+    $usersMinute = cd_countUsersTime( '0 0:01:00' );
+    $usersSecond = cd_countUsersTime( '0 0:00:01' );
+    
     $perUserString = "?";
     if( $userCount > 0 ) {
         $perUserString = cd_formatBytes( $bytesUsed / $userCount );
         }
-    
+
+    $houseWord = "houses";
+    if( $houseCount == 1 ) {
+        $houseWord = "house";
+        }
+    $connectionWord = "connections";
+    if( $connectionCount == 1 ) {
+        $connectionWord = "connection";
+        }
     
     echo "<table width='100%' border=0><tr>".
-        "<td>[<a href=\"server.php?action=show_data" .
+        "<td valign=top width=25%>[<a href=\"server.php?action=show_data" .
             "\">Main</a>] ".
             "[<a href=\"server.php?action=show_prices" .
             "\">Prices</a>] ".
             "[<a href=\"server.php?action=show_stats" .
             "\">Stats</a>]</td>".
-        "<td align=center>$sizeString ($perUserString per user)</td>".
-        "<td align=right>[<a href=\"server.php?action=logout" .
+        "<td valign=top align=center width=50%>".
+        "$sizeString ($perUserString per user)<br>".
+        "$houseCount robbable $houseWord<br>".
+        "$connectionCount active MySQL $connectionWord<br>".
+        "Users: $usersDay/d | $usersHour/h | $usersFiveMin/5m | ".
+        "$usersMinute/m | $usersSecond/s</td>".
+        "<td valign=top align=right width=25%>[<a href=\"server.php?action=logout" .
             "\">Logout</a>]</td>".
         "</tr></table><br><br><br>";
     }
@@ -8102,6 +8545,13 @@ function cd_showData() {
     echo "<a href=\"server.php?action=show_log\">".
         "Show log</a>";
     echo "<hr>";
+    global $callAdminInEmergency;
+    if( $callAdminInEmergency ) {    
+        echo "<a href=\"server.php?action=test_admin_call\">".
+            "Test phone call to admin</a>";
+        echo "<hr>";
+        }
+    
     echo "Generated for $remoteIP\n";
     
     }
@@ -8678,7 +9128,6 @@ function cd_showDetail() {
 
     echo "User ID: $user_id<br>\n";
     echo "Ticket: $ticket_id<br>\n";
-    echo "Email: $email<br>\n";
 
     $blockedChecked = "";
     if( $blocked ) {
@@ -8692,6 +9141,8 @@ function cd_showDetail() {
             <FORM ACTION="server.php" METHOD="post">
     <INPUT TYPE="hidden" NAME="action" VALUE="update_user">
     <INPUT TYPE="hidden" NAME="user_id" VALUE="<?php echo $user_id;?>">
+    Email: <INPUT TYPE="text" MAXLENGTH=40 SIZE=30 NAME="email"
+            VALUE="<?php echo $email;?>"><br>            
     Blocked <INPUT TYPE="checkbox" NAME="blocked" VALUE=1
                  <?php echo $blockedChecked;?> ><br>
     Admin <INPUT TYPE="checkbox" NAME="admin" VALUE=1
@@ -8706,6 +9157,62 @@ function cd_showDetail() {
     foreach( $names as $name ) {
         echo "$name<br>";
         }
+
+    $query = "SELECT robber_name, victim_name, user_id, house_user_id, ".
+        "value_estimate, ".
+        "rob_time, robber_died, scouting_count ".
+        "FROM $tableNamePrefix"."robbery_logs ".
+        "WHERE user_id = '$user_id' OR house_user_id = '$user_id';";
+
+    $result = cd_queryDatabase( $query );
+
+    $numRows = mysql_numrows( $result );
+    echo "<br><br>Robbery history:<br>";
+
+    echo "<table border=1>";
+    echo "<tr><td><b>Time</b></td>";
+    echo "<td><b>Robber Name</b></td>";
+    echo "<td><b>Victim Name</b></td>";
+    echo "<td><b>Died?</b></td>";
+    echo "<td><b>Scouted</b></td>";
+    echo "<td><b>Value Estimate</b></td></tr>";
+
+    for( $i=0; $i<$numRows; $i++ ) {
+        $rob_time = mysql_result( $result, $i, "rob_time" );
+        $robber_died = mysql_result( $result, $i, "robber_died" );
+        $scouting_counts = mysql_result( $result, $i, "scouting_count" );
+
+        $robber_name = mysql_result( $result, $i, "robber_name" );
+        $robber_user_id = mysql_result( $result, $i, "user_id" );
+        $victim_name = mysql_result( $result, $i, "victim_name" );
+        $house_user_id = mysql_result( $result, $i, "house_user_id" );
+        $value_estimate = mysql_result( $result, $i, "value_estimate" );
+
+        echo "<tr><td>$rob_time</td>";
+
+        if( $robber_user_id == $user_id ) {
+            echo "<td>$robber_name</td>";
+            }
+        else {
+            echo "<td><a href=\"server.php?action=show_detail" .
+                "&user_id=$robber_user_id\">$robber_name</a></td>";
+            }
+
+        if( $house_user_id == $user_id ) {
+            echo "<td>$victim_name</td>";
+            }
+        else {
+            echo "<td><a href=\"server.php?action=show_detail" .
+                "&user_id=$house_user_id\">$victim_name</a></td>";
+            }
+        
+        echo "<td>$robber_died</td>";
+        echo "<td>$scouting_counts</td>";
+        echo "<td>$value_estimate</td></tr>";
+        }
+    echo "</table>";
+    
+    
     
     }
 
@@ -8723,7 +9230,7 @@ function cd_blockUserID() {
     $blocked = cd_requestFilter( "blocked", "/[01]/" );
 
     // don't touch admin
-    if( cd_updateUser_internal( $user_id, $blocked, -1 ) ) {
+    if( cd_updateUser_internal( $user_id, $blocked, -1, -1 ) ) {
         cd_showData();
         }
     }
@@ -8739,16 +9246,17 @@ function cd_updateUser() {
 
     $blocked = cd_requestFilter( "blocked", "/[1]/", "0" );
     $admin = cd_requestFilter( "admin", "/[1]/", "0" );
+    $email = cd_requestFilter( "email", "/[A-Z0-9._%+-]+@[A-Z0-9.-]+/i" );
 
-    if( cd_updateUser_internal( $user_id, $blocked, $admin ) ) {
+    if( cd_updateUser_internal( $user_id, $blocked, $admin, $email ) ) {
         cd_showDetail();
         }
     }
 
 
-// set either to -1 to leave unchanged
+// set any to -1 to leave unchanged
 // returns 1 on success
-function cd_updateUser_internal( $user_id, $blocked, $admin ) {
+function cd_updateUser_internal( $user_id, $blocked, $admin, $email ) {
     
     global $tableNamePrefix;
         
@@ -8757,7 +9265,8 @@ function cd_updateUser_internal( $user_id, $blocked, $admin ) {
     
 
     
-    $query = "SELECT user_id, blocked, admin FROM $tableNamePrefix"."users ".
+    $query = "SELECT user_id, blocked, admin, email ".
+        "FROM $tableNamePrefix"."users ".
         "WHERE user_id = '$user_id';";
     $result = cd_queryDatabase( $query );
 
@@ -8766,6 +9275,7 @@ function cd_updateUser_internal( $user_id, $blocked, $admin ) {
     if( $numRows == 1 ) {
         $old_blocked = mysql_result( $result, 0, "blocked" );
         $old_admin = mysql_result( $result, 0, "admin" );
+        $old_email = mysql_result( $result, 0, "email" );
 
         if( $admin == -1 ) {
             $admin = $old_admin;
@@ -8773,10 +9283,13 @@ function cd_updateUser_internal( $user_id, $blocked, $admin ) {
         if( $blocked == -1 ) {
             $blocked = $old_blocked;
             }
+        if( $email == -1 ) {
+            $email = $old_email;
+            }
         
         
         $query = "UPDATE $tableNamePrefix"."users SET " .
-            "blocked = '$blocked', admin = '$admin' " .
+            "blocked = '$blocked', admin = '$admin', email = '$email' " .
             "WHERE user_id = '$user_id';";
         
         $result = cd_queryDatabase( $query );
@@ -8980,21 +9493,68 @@ $cd_mysqlLink;
 
 /**
  * Connects to the database according to the database variables.
+ *
+ * If $inTrackStats is true, will save connection count stats to database.
  */  
-function cd_connectToDatabase() {
+function cd_connectToDatabase( $inTrackStats = true) {
     global $databaseServer,
         $databaseUsername, $databasePassword, $databaseName,
         $cd_mysqlLink;
     
     
     $cd_mysqlLink =
-        mysql_connect( $databaseServer, $databaseUsername, $databasePassword )
-        or cd_operationError( "Could not connect to database server: " .
-                              mysql_error() );
+        mysql_connect( $databaseServer, $databaseUsername, $databasePassword );
+
+
+    if( ! $cd_mysqlLink && mysql_errno() == 1040 ) {
+        // too many mysql connections!
+        
+        // sleep before displaying an error message
+        // this will give the client a chance to give up on this
+        // connection and try reconnecting again
+        // (without our error message screwing it up)
+
+        // 30 seconds should be long enough.
+        sleep( 30 );
+
+        // note that this is better than retrying the mysql connection
+        // here after sleeping, because the client will give up on
+        // us by that time anyway, and the connection that we make
+        // after sleeping will consume resources but be wasted.
+        }
+    
+    if( !$cd_mysqlLink ) {
+        
+        cd_operationError( "Could not connect to database server: " .
+                           mysql_error() );
+        }
+    
     
     mysql_select_db( $databaseName )
         or cd_operationError( "Could not select $databaseName database: " .
                               mysql_error() );
+
+
+    $result = mysql_query( "SHOW FULL PROCESSLIST;", $cd_mysqlLink );
+
+    $numRows = mysql_numrows( $result );
+
+    if( $inTrackStats ) {
+        cd_incrementStat( "database_connections" );
+
+        cd_updateMaxStat( "max_concurrent_connections", $numRows );
+        }
+    
+    global $mysqlConnectionCountThreshold;
+
+    if( $numRows > $mysqlConnectionCountThreshold ) {
+        cd_informAdmin(
+            "This is a warning message generated by ".
+            "The Castle Doctrine server.  ".
+            "The data base currently has $numRows connections. ".
+            "The warning threshold is $mysqlConnectionCountThreshold ".
+            "connections." );
+        }
     }
 
 
@@ -9281,14 +9841,14 @@ function cd_fatalError( $message ) {
     
     echo( $logMessage );
 
-    cd_log( $logMessage );
-
     global $emailAdminOnFatalError, $adminEmail;
 
     if( $emailAdminOnFatalError ) {
         cd_mail( $adminEmail, "Castle Doctrine fatal error",
                  $logMessage );
         }
+    
+    cd_log( $logMessage );
     
     die();
     }
@@ -9374,10 +9934,6 @@ function cd_noticeAndWarningHandler( $errno, $errstr, $errfile, $errline ) {
 
     echo( $logMessage . "\n" );
 
-
-    cd_log( $logMessage );
-
-
     // treat notices as reportable failures, because they cause protocol
     // failures for client
     global $emailAdminOnFatalError, $adminEmail;
@@ -9389,6 +9945,10 @@ function cd_noticeAndWarningHandler( $errno, $errstr, $errfile, $errline ) {
                  $logMessage );
         
         }
+
+    
+
+    cd_log( $logMessage );
     }
 
 
@@ -9491,6 +10051,8 @@ function cd_checkPassword( $inFunctionName ) {
         $password_hash = $newSalt . "_" . $newHash;
         }
     else if( isset( $_COOKIE[ $cookieName ] ) ) {
+        cd_checkReferrer();
+
         $password_hash = $_COOKIE[ $cookieName ];
         
         // check that it's a good hash
@@ -9665,6 +10227,36 @@ function cd_countUsers() {
 
     $query = "SELECT COUNT(*) ".
         "FROM $tableNamePrefix"."houses;";
+    $result = cd_queryDatabase( $query );
+
+    return mysql_result( $result, 0, 0 );
+    }
+
+
+
+// counts users in a given time interval (string time interval) 
+function cd_countUsersTime( $inInterval ) {
+    global $tableNamePrefix;
+
+    $query = "SELECT COUNT(*) ".
+        "FROM $tableNamePrefix"."houses ".
+        "WHERE last_owner_action_time > ".
+        "SUBTIME( CURRENT_TIMESTAMP, '$inInterval' );";
+    $result = cd_queryDatabase( $query );
+
+    return mysql_result( $result, 0, 0 );
+    }
+ 
+
+
+function cd_countRobbableHouses() {
+    global $tableNamePrefix;
+
+    $query = "SELECT COUNT(*) ".
+        "FROM $tableNamePrefix"."houses ".
+        "WHERE ( edit_count > 0 OR ".
+        "        ( edit_count != 0 AND value_estimate > 0 ) )".
+        "AND blocked = 0;";
     $result = cd_queryDatabase( $query );
 
     return mysql_result( $result, 0, 0 );
@@ -9874,6 +10466,75 @@ function cd_mail( $inEmail,
 
 
 
+
+
+// makes a Twilio call to the admin with $inTextMessage as text-to-speech
+function cd_callAdmin( $inTextMessage ) {
+
+    
+    global $twilioFromNumber, $twilioToNumber, $twilioAcountID,
+        $twilioAuthToken;
+
+    $fromParam = urlencode( $twilioFromNumber );
+    $toParam = urlencode( $twilioToNumber );
+
+    $encodedMessage = urlencode( $inTextMessage );
+
+
+    // repeat 4 times
+    $messageCopies =
+        "Message%5B0%5D=$encodedMessage".
+        "&".
+        "Message%5B1%5D=$encodedMessage".
+        "&".
+        "Message%5B2%5D=$encodedMessage".
+        "&".
+        "Message%5B3%5D=$encodedMessage";
+    
+
+    $twimletURL = "http://twimlets.com/message?$messageCopies";
+    
+    $urlParam = urlencode( $twimletURL );
+    
+    
+    global $curlPath;
+
+    $curlCallString =
+    "$curlPath -X POST ".
+    "'https://api.twilio.com/2010-04-01/Accounts/$twilioAcountID/Calls.json' ".
+    "-d 'To=$toParam'  ".
+    "-d 'From=$fromParam' ".
+    "-d ".
+    "'Url=$urlParam' ".
+    "-u $twilioAcountID:$twilioAuthToken";
+
+    exec( $curlCallString );
+
+    return;
+    }
+
+
+
+
+
+// informs admin by email and phone, if either are enabled
+// of a non-fatal but serious condition
+function cd_informAdmin( $inMessage ) {
+    global $emailAdminOnFatalError, $callAdminInEmergency;
+
+
+    if( $emailAdminOnFatalError ) {
+        global $adminEmail;
+        
+        cd_mail( $adminEmail, "Castle Doctrine server issue",
+                 $inMessage );
+        }
+    if( $callAdminInEmergency ) {
+        cd_callAdmin( $inMessage );
+        }
+    }
+
+    
 
 
 ?>

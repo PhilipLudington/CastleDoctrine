@@ -2,3 +2,4 @@ conductive
 mobile
 noDropShadow
 forceUnderShadows
+noFamilyStartHere

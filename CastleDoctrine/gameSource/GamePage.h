@@ -34,6 +34,7 @@ class GamePage : public PageComponent {
         // inTip can either be a translation key or a raw tip
         // copied internally
         virtual void setToolTip( const char *inTip );
+        virtual void clearToolTip( const char *inTipToClear );
         
 
         
@@ -53,6 +54,11 @@ class GamePage : public PageComponent {
         virtual void base_step();
 
         
+        // override to catch keypress to dismiss shutdown warning
+        // overlay
+        virtual void base_keyDown( unsigned char inASCII );
+
+        
     protected:
         
 
@@ -62,6 +68,11 @@ class GamePage : public PageComponent {
         virtual void step() {
             };
         
+        // called before added sub-components have been drawn
+        virtual void drawUnderComponents( doublePair inViewCenter, 
+                                          double inViewSize ) {
+            };
+        // called after added sub-components have been drawn
         virtual void draw( doublePair inViewCenter, 
                            double inViewSize ) {
             };
@@ -101,9 +112,31 @@ class GamePage : public PageComponent {
             };
         
 
-        // override this from PageComponent to show waiting status
-        virtual void setWaiting( char inWaiting );
+        // subclasses can override this to selectively permit
+        // the waiting icon to be drawn at particular times
+        virtual char canShowWaitingIcon() {
+            return true;
+            }
         
+        // subclasses can override this to control size of waiting icon
+        // displayed on their pages
+        virtual char makeWaitingIconSmall() {
+            return false;
+            }
+        
+
+
+        // override this from PageComponent to show waiting status
+        virtual void setWaiting( char inWaiting,
+                                 char inWarningOnly = false );
+        
+
+
+        // shows an overlay message warning the user that
+        // a server shutdown is pending
+        virtual void showShutdownPendingWarning();
+        
+
         GamePage();
         
 
@@ -135,6 +168,9 @@ class GamePage : public PageComponent {
         
         static double sWaitingFade;
         static char sWaiting;
+        static char sShowWaitingWarningOnly;
+        
+        static char sShutdownPendingWarning;
     };
 
 

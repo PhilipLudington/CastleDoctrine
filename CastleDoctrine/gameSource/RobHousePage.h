@@ -150,6 +150,14 @@ class RobHousePage : public LiveHousePage, public ActionListener {
         char *mDescription;
         
         char *mDeathMessage;
+
+        
+        // override from GamePage to selectively hide any waiting
+        // icons (if robTime message shown, because it overlaps with waiting
+        // icon)
+        virtual char canShowWaitingIcon();
+        
+
         
     };
 

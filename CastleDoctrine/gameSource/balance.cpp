@@ -15,7 +15,7 @@ extern Font *numbersFontFixed;
 void drawBalance( int inLoot, int inChangeCost ) {
     doublePair labelPos = { 9, 2 };
     
-    
+    setDrawColor( 1, 1, 1, 1 );
 
     mainFont->drawString( translate( "editBalance" ), 
                           labelPos, alignRight );

@@ -1,4 +1,10 @@
-int versionNumber = 30;
+int versionNumber = 35;
+
+// retain an older version number here if server is compatible
+// with older client versions.
+// Change this number (and number on server) if server has changed
+// in a way that breaks old clients.
+int ticketHashVersionNumber = 35;
 
 
 
@@ -193,6 +199,8 @@ Font *mainFontFixed;
 Font *numbersFontFixed;
 
 Font *tinyFont;
+
+char *shutdownMessage = NULL;
 
 
 char *reflectorURL = NULL;
@@ -594,6 +602,11 @@ void freeFrameDrawer() {
     freeTools();
     freeGalleryObjects();
 
+    if( shutdownMessage != NULL ) {
+        delete [] shutdownMessage;
+        shutdownMessage = NULL;
+        }
+
     if( serverURL != NULL ) {
         delete [] serverURL;
         serverURL = NULL;
@@ -906,6 +919,18 @@ void drawFrame( char inUpdate ) {
 
 
     if( !inUpdate ) {
+
+        if( isQuittingBlocked() ) {
+            // unsafe NOT to keep updating here, because pending network
+            // requests can stall
+
+            // keep stepping current page, but don't do any other processing
+            // (and still block user events from reaching current page)
+            if( currentGamePage != NULL ) {
+                currentGamePage->base_step();
+                }
+            }
+
         drawFrameNoUpdate( false );
             
         drawPauseScreen();
@@ -1038,6 +1063,7 @@ void drawFrame( char inUpdate ) {
     if( getServerShutdown() ) {
         currentGamePage = finalMessagePage;
         finalMessagePage->setMessageKey( "serverShutdownMessage" );
+        finalMessagePage->setSubMessage( shutdownMessage );
         
         currentGamePage->base_makeActive( true );
         }
@@ -1571,6 +1597,8 @@ void drawFrame( char inUpdate ) {
                     currentGamePage = fetchSelfTestReplayPage;
                     
                     fetchSelfTestReplayPage->setOwnerID( r->uniqueID );
+                    fetchSelfTestReplayPage->setOwnerCharacterName( 
+                        r->rawCharacterName );
                     
                     currentGamePage->base_makeActive( true );
                     }

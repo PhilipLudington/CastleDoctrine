@@ -28,7 +28,7 @@ char *simulateRobbery( const char *inRobberyData ) {
             delete [] *( tokens->getElement( i ) );
             }
         
-        return stringDuplicate( "FAILED" );
+        return stringDuplicate( "FAILED: Request didn't have 5 tokens" );
         }
 
     
@@ -104,7 +104,8 @@ wife_money
         replayCheckerDisplay->getSuccess() == 0 ) {
         // move list ran out or was incorrect before robbery ended properly!
         
-        return stringDuplicate( "FAILED" );
+        return stringDuplicate( 
+            "FAILED:  move list ended before robbery ended" );
         }
     
     if( replayCheckerDisplay->getDead() && 
@@ -156,7 +157,8 @@ end_house_map
         delete [] endHouseMap;
         }
     else {
-        response = stringDuplicate( "FAILED" );
+        response = stringDuplicate( 
+            "FAILED: move list contained a forbidden move of tool use" );
         }
 
     return response;

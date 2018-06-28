@@ -23,7 +23,7 @@ class FetchSelfTestReplayPage : public GamePage, public ActionListener {
 
         // must be called before makeActive
         void setOwnerID( int inID );
-        
+        void setOwnerCharacterName( const char *inName );
 
         virtual char getReturnToMenu();
         
@@ -52,7 +52,8 @@ class FetchSelfTestReplayPage : public GamePage, public ActionListener {
         char mReturnToMenu;
         
         int mOwnerID;
-
+        char *mOwnerCharacterName;
+        
         void clearRecord();
     };
 

@@ -132,6 +132,9 @@ class EditHousePage : public LiveHousePage, public ActionListener {
         virtual void actionPerformed( GUIComponent *inTarget );
 
 
+        virtual void drawUnderComponents( doublePair inViewCenter, 
+                                          double inViewSize );
+
         virtual void draw( doublePair inViewCenter, 
                            double inViewSize );
         
@@ -214,7 +217,10 @@ class EditHousePage : public LiveHousePage, public ActionListener {
         void recomputeChangeCost();
         
         
-        
+        // override because large icon overlaps with picker
+        virtual char makeWaitingIconSmall() {
+            return true;
+            }
 
     };
 

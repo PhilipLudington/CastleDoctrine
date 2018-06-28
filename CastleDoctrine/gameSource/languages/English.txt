@@ -6,6 +6,7 @@ loading "Loading..."
 
 badPropertiesSignature "Bad properties signature in"
 badSpriteSignature "Bad sprite signature in"
+badObjectSignature "Bad object signature in"
 badReachSignature      "Bad tool reach signature in"
 badTransitionSignature      "Bad transition signature in"
 
@@ -53,6 +54,9 @@ returnMenu "Menu"
 returnHome "Return to Your House"
 
 
+shutdownPendingWarning "The server is waiting for you so that it can shut down.##Please finish up what you are doing.######Press SPACE to return to the game."
+
+
 
 
 okay "Okay"
@@ -69,7 +73,7 @@ blueprintDescription "Blueprint for %s house:"
 
 
 
-editDescription "Work on your house:"
+editDescription "Work on your house:##(Five idle minutes make you leave...)"
 
 loadBackpackDescription "Load your backpack:"
 loadBackpackSellModeDescription "Sell tools:"
@@ -92,6 +96,12 @@ openAuctionListTip "View currently running gallery auctions"
 
 gridViewObjects "View full grid of objects"
 gridViewTools "View full grid of tools"
+
+moreButtonObject "%d more object..."
+moreButtonTool "%d more tool..."
+
+moreButtonObjects "%d more objects..."
+moreButtonTools "%d more tools..."
 
 
 pickerDescription "Pick one:"
@@ -211,7 +221,7 @@ startTileDescription "Welcome Mat"
 wifeHolding "%s (carrying $%d)"
 
 
-robDescription "Robbing %s house:##(Five stationary minutes are deadly...)"
+robDescription "Robbing %s house:##(Five idle minutes are deadly...)"
 
 robCops "Sirens?"
 

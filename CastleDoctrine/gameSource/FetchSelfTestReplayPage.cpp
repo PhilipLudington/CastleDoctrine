@@ -26,7 +26,8 @@ FetchSelfTestReplayPage::FetchSelfTestReplayPage()
         : mWebRequest( -1 ),
           mRecordReady( false ),
           mMenuButton( mainFont, 4, -4, translate( "returnMenu" ) ),
-          mReturnToMenu( false ) {
+          mReturnToMenu( false ),
+          mOwnerCharacterName( NULL ) {
 
     // clearRecord will do the rest of the NULL-ing
     mLogRecord.robberName = NULL;
@@ -43,6 +44,11 @@ FetchSelfTestReplayPage::~FetchSelfTestReplayPage() {
         clearWebRequestSerial( mWebRequest );
         }
     clearRecord();
+
+    if( mOwnerCharacterName != NULL ) {
+        delete [] mOwnerCharacterName;
+        }
+    mOwnerCharacterName = NULL;
     }
 
 
@@ -75,6 +81,15 @@ void FetchSelfTestReplayPage::clearRecord() {
 
 void FetchSelfTestReplayPage::setOwnerID( int inID ) {
     mOwnerID = inID;
+    }
+
+
+
+void FetchSelfTestReplayPage::setOwnerCharacterName( const char *inName ) {    
+    if( mOwnerCharacterName != NULL ) {
+        delete [] mOwnerCharacterName;
+        }
+    mOwnerCharacterName = stringDuplicate( inName );
     }
 
 
@@ -211,8 +226,9 @@ void FetchSelfTestReplayPage::makeActive( char inFresh ) {
 
     char *fullRequestURL = autoSprintf( 
         "%s?action=get_self_test_log&user_id=%d&house_owner_id=%d"
+        "&house_owner_character_name=%s"
         "&%s",
-        serverURL, userID, mOwnerID, ticketHash );
+        serverURL, userID, mOwnerID, mOwnerCharacterName, ticketHash );
     delete [] ticketHash;
     
     mWebRequest = startWebRequestSerial( "GET", 

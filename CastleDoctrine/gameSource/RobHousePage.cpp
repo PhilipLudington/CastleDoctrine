@@ -451,6 +451,24 @@ void RobHousePage::step() {
 
 
 
+static int displayTimeMessageBelow = 60;
+
+
+char RobHousePage::canShowWaitingIcon() {
+    if( ! mShowTimeAtEnd ) {
+        return true;
+        }
+    
+    int timeLeft = mEndTime - game_time( NULL );
+
+    if( timeLeft < displayTimeMessageBelow ) {
+        return false;
+        }
+
+    return true;
+    }
+
+
 
 extern double frameRateFactor;
 
@@ -493,7 +511,7 @@ void RobHousePage::draw( doublePair inViewCenter,
         timeLeft = 0;
         }
 
-    if( timeLeft < 60 ) {
+    if( timeLeft < displayTimeMessageBelow ) {
 
         if( timeLeft > 10 ) {
             if( mTimeMessageFade < 1 ) {

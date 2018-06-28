@@ -47,6 +47,13 @@ class PageComponent : public GUIComponent {
         void setPosition( double inX, double inY );
 
         doublePair getPosition();
+
+        // set to true to ignore events and NOT
+        // pass them on to sub-components
+        // still handles and passes UP events (so that
+        // down states that were invoked before the ignore started
+        // do not get stuck)
+        void setIgnoreEvents( char inIgnoreEvents );
         
 
         void base_pointerMove( float inX, float inY );
@@ -57,7 +64,7 @@ class PageComponent : public GUIComponent {
 
         void base_pointerUp( float inX, float inY );
 
-        void base_keyDown( unsigned char inASCII );
+        virtual void base_keyDown( unsigned char inASCII );
         
         void base_keyUp( unsigned char inASCII );
 
@@ -82,8 +89,12 @@ class PageComponent : public GUIComponent {
         // default implementations pass tool tip up to parent
 
 
-        // inTip destroyed by caller
+        // inTip destroyed by caller, or NULL to clear
         virtual void setToolTip( const char *inTip );
+
+        // clears a specific tool tip---only if this tip is still showing
+        virtual void clearToolTip( const char *inTipToClear );
+        
 
         // clears hover or partially-pressed status
         virtual void clearState() {
@@ -131,9 +142,25 @@ class PageComponent : public GUIComponent {
         // a server response) so that an appropriate indicator can be 
         // displayed.
         // inWaiting is true if waiting, false if done waiting.
-        virtual void setWaiting( char inWaiting );
+        // inSmallIcon is true if there's not room on page for larger warning
+        // icon
+        // inWarningOnly is true if the waiting icon should be hidden
+        //               during normal, non-delayed network operations.
+        virtual void setWaiting( char inWaiting,
+                                 char inWarningOnly = false );
         
 
+
+        // this component blocks all other sibling sub-components from
+        // receiving events
+        void setHogMouseEvents( char inHogMouseEvents );
+        
+
+        // sets the event hog amoung the sub-components of this component
+        // or NULL to set no event hog
+        // auto-cleared with clearState called
+        void setMouseEventHog( PageComponent *inHog );
+        
 
 
         SimpleVector<PageComponent*> mComponents;
@@ -143,6 +170,10 @@ class PageComponent : public GUIComponent {
         PageComponent *mParent;
         
         char mVisible;
+
+        char mIgnoreEvents;
+
+        PageComponent *mMouseEventHog;
 
     };
 

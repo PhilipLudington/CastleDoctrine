@@ -8,7 +8,7 @@
 
 extern char *downloadCode;
 extern int serverSequenceNumber;
-extern int versionNumber;
+extern int ticketHashVersionNumber;
 
 
 char *getTicketHash() {
@@ -36,7 +36,7 @@ char *getTicketHash() {
 
     char *toHash = autoSprintf( "%d%d%s", 
                                 serverSequenceNumber,
-                                versionNumber,
+                                ticketHashVersionNumber,
                                 sharedServerSecret );
     
     char *hash = hmac_sha1( pureCode, toHash );

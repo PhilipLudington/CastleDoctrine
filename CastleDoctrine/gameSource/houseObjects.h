@@ -85,6 +85,7 @@ int getObjectID( const char *inName );
     F(playerFacingAway), \
     F(interactingWithPlayer), \
     F(wifeOwns), \
+    F(noFamilyStartHere), \
     F(onTopOfPlayer), \
     F(thinShroud), \
     F(blockSubInfo), \
@@ -107,6 +108,9 @@ enum propertyID {
 
 char isPropertySet( int inObjectID, int inState, propertyID inProperty );
 
+
+// true if inProperty occurs in some state for inObjectID
+char isPropertyEverSet( int inObjectID, propertyID inProperty );
 
 
 // tests if inOtherObjectID is in inObjectID's group

@@ -59,6 +59,9 @@ void initGalleryObjects() {
     if( galleryObjectNameDirs == NULL ) {
         return;
         }
+
+    Image *shadow = NULL;
+    double *shadowChannel;
     
     
     for( int i=0; i<numGalleryObjects; i++ ) {
@@ -125,31 +128,35 @@ void initGalleryObjects() {
                         
                         int w = image->getWidth();
                         int h = image->getHeight();
+                        
 
-                        // make shadow map larger than image
-                        // so that box blur filter weird edge behavior
-                        // doesn't happen
-                        Image *shadow = new Image( w * 2, h * 2, 1, true );
-                        
-                        double *shadowChannel = shadow->getChannel( 0 );
-                        
-                        // white center square, with black bleeding in 
-                        // a bit (white square slightly smaller than
-                        // target image)
-                        for( int y=2; y<h-2; y++ ) {
-                            int yFull = y + h/2;
-                            for( int x=2; x<w-2; x++ ) {
-                                int xFull = x + w/2;
-                                shadowChannel[ yFull * w * 2 + xFull ] = 1;
+                        if( shadow == NULL ) {
+                            // shadow not computed yet
+
+                            // make shadow map larger than image
+                            // so that box blur filter weird edge behavior
+                            // doesn't happen
+                            shadow = new Image( w * 2, h * 2, 1, true );
+                            
+                            shadowChannel = shadow->getChannel( 0 );
+                            
+                            // white center square, with black bleeding in 
+                            // a bit (white square slightly smaller than
+                            // target image)
+                            for( int y=2; y<h-2; y++ ) {
+                                int yFull = y + h/2;
+                                for( int x=2; x<w-2; x++ ) {
+                                    int xFull = x + w/2;
+                                    shadowChannel[ yFull * w * 2 + xFull ] = 1;
+                                    }
                                 }
+                            FastBlurFilter f;
+                            
+                            shadow->filter( &f );
+                            shadow->filter( &f );
+                            shadow->filter( &f );
+                            shadow->filter( &f );
                             }
-                        FastBlurFilter f;
-                        
-                        shadow->filter( &f );
-                        shadow->filter( &f );
-                        shadow->filter( &f );
-                        shadow->filter( &f );
-                        
                         
                         double *red = image->getChannel( 0 );
                         double *green = image->getChannel( 1 );
@@ -172,9 +179,6 @@ void initGalleryObjects() {
                                 blue[i] *= level;
                                 }
                             }
-                        
-                        
-                        delete shadow;
                         
 
 
@@ -206,6 +210,11 @@ void initGalleryObjects() {
             }
         delete f;
         }
+    
+    if( shadow != NULL ) {
+        delete shadow;
+        }
+    
 
     delete [] galleryObjectNameDirs;
 

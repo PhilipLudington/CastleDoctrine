@@ -98,6 +98,8 @@ class RobHouseGridDisplay : public HouseGridDisplay {
         int mDeathSourceID;
         int mDeathSourceState;
 
+        char mFamilyAndMobilesProcessedAtEnd;
+
         char mLeaveDisplayCanBeShown;
         SpriteHandle mLeaveSprite;
 
@@ -251,6 +253,12 @@ class RobHouseGridDisplay : public HouseGridDisplay {
         // at the beginning of the robbery, if starting position is not blocked
         int *mHouseMapMobileStartingPositions;
         
+        // the states of house objects after they jump-back (family) at the end
+        // (we don't draw this, ever, but we return it when getHouseMap is 
+        //  called)
+        int *mHouseMapFinalIDs;
+        int *mHouseMapFinalCellStates;
+
         // the states of mobiles after they jump-back at the end
         // (we don't draw this, ever, but we return it when getHouseMap is 
         //  called)

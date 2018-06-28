@@ -59,11 +59,13 @@ EditHousePage::EditHousePage()
     addComponent( &mAuctionButton );
     addComponent( &mUndoButton );
     addComponent( &mGridDisplay );
-    addComponent( &mObjectPicker );
-
+    
     addComponent( &mDiffHighlightToggleButton );
     
     addComponent( &mEyedropperStatus );
+    
+    addComponent( &mObjectPicker );
+
 
     mDoneButton.setMouseOverTip( "" );
     mUndoButton.setMouseOverTip( translate( "undoTip" ) );
@@ -539,6 +541,9 @@ void EditHousePage::makeActive( char inFresh ) {
         return;
         }
     
+    mGridDisplay.clearMovementKeyHolds();
+    
+
     mJumpToTapes = false;
     mDone = false;
     mDead = false;
@@ -586,16 +591,19 @@ void EditHousePage::checkIfTapesButtonVisible() {
 extern Font *numbersFontFixed;
 
 
+void EditHousePage::drawUnderComponents( doublePair inViewCenter, 
+                                         double inViewSize ) {
+    drawBalance( mLootValue, mChangesCost );
+    }
+
+
+
 void EditHousePage::draw( doublePair inViewCenter, 
                                double inViewSize ) {
         
-    doublePair labelPos = { 0, 6.75 };
+    doublePair labelPos = { 0, 7 };
     
     drawMessage( "editDescription", labelPos, false );    
-
-    
-    drawBalance( mLootValue, mChangesCost );
-
 
 
     if( ! mGridDisplay.doAllFamilyObjectsHaveExitPath() ) {

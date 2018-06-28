@@ -9,7 +9,7 @@ Client reads request up to [END_REQUEST] before responding, and ends all of its
 responses with [END_RESPONSE]
 
 
-On failure, response is FAILED
+On failure, response is FAILED, plus a message, followed by [END_RESPONSE] 
 
 
 

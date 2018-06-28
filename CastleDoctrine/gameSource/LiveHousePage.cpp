@@ -96,6 +96,7 @@ void LiveHousePage::step() {
           
         if( result != 0 ) {
             // send is over, not matter what response we get back
+            setWaiting( false );
             
             // same response possibilies for all requests types here
             
@@ -124,6 +125,11 @@ void LiveHousePage::step() {
                             mOutOfTime = true;
                             }
                         }
+                    else if( strstr( response, 
+                                     "SERVER_GOING_DOWN" ) != NULL ) {
+                        showShutdownPendingWarning();
+                        }
+                    
 
                     delete [] response;
                     }
@@ -156,6 +162,10 @@ void LiveHousePage::step() {
         sWebRequest = startWebRequestSerial( "GET", 
                                        fullRequestURL, 
                                        NULL );
+
+        // show warnings only for these behind-the-scenes
+        // requests
+        setWaiting( true, true );
         
         delete [] fullRequestURL;
         
@@ -185,6 +195,10 @@ void LiveHousePage::step() {
                                                fullRequestURL, 
                                                NULL );
                 
+                // show warnings only for these behind-the-scenes
+                // requests
+                setWaiting( true, true );
+
                 mCurrentRequestForStartTest = false;
                 
                 delete [] fullRequestURL;

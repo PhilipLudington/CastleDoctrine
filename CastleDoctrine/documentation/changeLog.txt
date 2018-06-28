@@ -1,3 +1,261 @@
+Version 35      2014-March-31
+
+--Prevented blocked family members from jumping back to positions on top of
+  shotgun or panic button at the end of a robbery (allowed insta-kill and
+  insta-press situations to be created).
+
+--Fixed lingering 'ENTER to confirm' message in safe movement mode after move
+  confirmation.
+
+--Fixed safe movement mode to display cause-of-death messages right away
+  (thanks Doug).
+
+--Fixed edit-house movement keys getting stuck down when switching back and
+  forth between self test (thanks MMaster).
+
+
+
+
+
+Version 34    Live Server Fixes
+
+--Fixed stale price list issue that could result in house loss after editing
+  (thanks Mark Host).
+
+--True doormat suicide now leaves a tape.
+
+--Fixed paintings getting lost from the game if a robber who just stole a
+  painting dies in another house before returning home with the painting 
+  (thanks LiteS).
+
+
+
+
+
+Version 34    2014-February-28
+
+--Prevented multiple leave actions from being appended to the end of the move
+  list if the player is mashing the keyboard while leaving a robbery.  This
+  caused the family to be processed twice at the end, resulting in family
+  duplication in the resulting map, leading to robber death from simulation
+  mismatch.
+
+--Blocked robber actions after death or reaching vault (in case of keyboard
+  mashing where several key events might be queue for a given frame) to prevent
+  family duplication due to multiple end actions.  Also added a check to always
+  prevent multiple occurrences of family end processing.
+ 
+--Fixed bug where family members jumped back to their starting postitions when
+  panning around a paused security tape at the end of the robbery.
+
+--Added connection icons to all live house pages (editing, robbery, backpack,
+  etc.) for pings that take longer than 8 seconds to connect or need to be
+  retried.  This lets people know that their network may have gone out before
+  its too late (thanks Joshua Collins).
+
+
+
+
+
+Version 33  Live Server Fixes
+
+--Temporary fix to prevent people who submitt #L#L#L move lists (multiple leave
+  events due to mashing the keyboard during client-side framerate lag) from
+  being killed (thanks Jabloko).
+
+--Fixed undefined variable warning in set_error_handler (thanks MMaster).
+
+--Better error logging when server-side simulation fails.
+
+--Detection of truncated HTTP requests (server now sleeps for 30 seconds if it
+  detects this, allowing the client to time out and retry).
+
+
+
+
+Version 33     2014-February-20
+
+--Fixed the electrobreaker issue and wireless transmission by not jumping back
+  to start state when a circuit overruns the substep limit (thanks Iceman).
+
+--Huge optimization to power propagation and transitions by skipping cells
+  (like empty floor and walls) that are never affected by power.
+
+--Got rid of terminal print out when a mobile steps on a button.
+
+--Fixed so that Un-ignore All button does not jump back to the top of the house
+  list (thanks MMaster).
+
+
+
+
+
+Version 32  Live Server Fixes
+
+--Fixed so that backpack contents value is taken into account when calculating
+  your financial neigborhood to decide which page of the house list to show you
+  first (before, if you spent all money on tools, you'd start at the 0 houses).
+
+
+
+
+Version 32    2014-February-14
+
+--Client support for not specifying a skip in the first house list fetched,
+  allowing the server to pick a good page in the house list based on the
+  player's current house value.  The player can then scroll freely up and down
+  from there (thanks Iceman).
+
+--Running an empty search on the house list page now returns you to your value
+  neighborhood on the house list instead of jumping back to the top of the list
+  (thanks Jere).
+
+--Much improved object and tool picker that displays a drop down menu showing
+  the top six items on the stack.
+
+--Trapdoor is now CLOSED in edit mode, making it much easier to walk around
+  your house, and also fixing some inconsitencies (trapdoors that were closed
+  at the end of a damage-saving robbery were stuck closed in edit mode---now
+  ALL trapdoors are closed in edit mode).
+
+--Warning on edit screen about timeout.  Reworded robbery timeout warning.
+
+--Fixed bug that caused duplication of family members if robber stepped onto
+  vault right as shotgun-wife stepped next to vault (so robber succeeded and
+  died in same move).
+
+--Fixed signature weaknesses for object groupWith settings and to prevent
+  deletion of states (thanks Arakira).
+
+--Optimized use of blur filters during loading, reduced load time by 20%.
+
+--Fixed invisible objects in saved map shots ('+' key) from tape playback page.
+
+--Fixed get_self_test_log admin call to work with v22 house list changes.
+
+--Made pausing during deadly times safer by ensuring that pending network 
+  requests still get processed (thanks David Rhinehart).
+
+
+
+
+
+Version 31a  Live Server Fixes
+
+--Server support for returning a starting house list page around the player's
+  house value (auto-setting how many houses on the list to skip if the client
+  provides no skip value).  This works with v32 clients to auto-set the first
+  house page shown, but is also backwards compatible with v31 clients.
+
+--Added retry for deadlock on chilling_houses table when creating a new house.
+
+--Added retry for deadlock on chilling_houses in flush call.
+
+--Added work-around for strange, rare issue of house maps missing from the map
+  cache table at the end of a robbery only to show up in that table later
+  (maybe from an edit that ends right before the robbery).
+
+--Added retries to work around deadlocks in isolated queries at the tail end
+  of endRobHouse.
+
+--Fix for rare bug where a timed out startRobHouse request crosses paths with
+  the owner of that house dying, resulting in the forced death of the robber
+  (thanks Max Jehle).
+
+
+
+
+
+Version 31a   2014-January-31
+
+--Unix Source bundle update.
+
+(Includes all Live Server Fixes listed below.)
+
+
+
+
+Version 31  Live Server Fixes
+
+--Added a bunch of stats to the admin view.
+
+--Added current-active-user count stat harvesting to every flush call.
+
+--Fixed a deadlock in ping_house by retrying after a deadlock.
+
+--Added a 5-minute delay before a new house goes on the house list to thwart
+  the prevalence of farming neglected starter homes in the 2000-bracket on the
+  house list.
+
+--Added tracking of total daily connections stats.
+
+--Fixed server source so that it can be installed on a fresh database without
+  throwing database errors (thanks Mike H).
+
+--Fixed deprecated call-by-reference warnings (thanks Mike H).
+
+
+
+
+
+Version 31   2014-January-28
+
+--Added a custom reason-for-shutdown message sent by the server that the client
+  displays.
+
+--Added pending shutdown warnings to the ping and self-test protocols.  The
+  client displays a dismissable message when it receives a shutdown warning
+  from the server.
+
+--Client now retries eternally until it hears back from server (instead of
+  stopping after a hard connection error occurs).  A network outtage or server
+  downtime will no longer result in your death, assuming that the outtage is
+  short enough that you don't get timed out server-side.
+
+--Added a grace-period switch on the server that can be enabled after unplanned
+  outtages to allow players delayed by the outtage to check in stale robberies
+  and self tests without dying.
+
+--Fixed eyedropper tool getting stuck on when ALT-tabbing.  On Windows, this
+  required an update of the SDL DLL from 1.2.13 to 1.2.15 (note that the DLL
+  itself seems to have the version number 1.2.14, but I did download the
+  1.2.15 bundle).
+
+
+
+
+
+Version 30  Live Server Fixes
+
+--Added stat tracking max total house value seen in a given day (for computing
+  contest exchange rate).
+
+--Added full robbery history on each player's detail page in admin view.
+
+--Fixed so that admin error emails are sent before logging the error in the
+  database (for cases where the error was caused by NOT being able to connect
+  to the database in the first place).
+
+--Support for monitoring concurrent MySQL connections and contacting admin if a
+  threshold is surpassed.
+
+--Made server/client exchange more robust against MySQL connection overflow.
+  The server now sleeps for 30 seconds after failing to connect due to too many
+  MySQL connections before returning an error to the client, allowing the
+  client to gracefully timeout and retry the connection later without choking
+  on the error message.  The server has a limit of 100 simultaneous MySQL
+  connections, but hitting that limit is no longer fatal to players (they just
+  see more client retries until the surge passes).
+
+--Support for changing a user's email in the admin interface.
+
+--Added remote server monitoring.
+
+--Patched various security holes in server PHP code (thanks Chris Cowan).
+
+
+
+
 Version 30  2014-January-17
 
 --Fixed typo in owner died message (thanks Pottage).

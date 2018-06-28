@@ -97,6 +97,8 @@ class LoadBackpackPage : public LiveHousePage, public ActionListener {
         virtual void actionPerformed( GUIComponent *inTarget );
 
 
+        virtual void drawUnderComponents( doublePair inViewCenter, 
+                                          double inViewSize );
         virtual void draw( doublePair inViewCenter, 
                            double inViewSize );
         
@@ -157,6 +159,11 @@ class LoadBackpackPage : public LiveHousePage, public ActionListener {
         
         void checkSellModeStatus();
 
+        
+        // override because large icon overlaps with picker
+        virtual char makeWaitingIconSmall() {
+            return true;
+            }
 
     };
 

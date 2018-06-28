@@ -1,5 +1,5 @@
 repo: 2ba43ac63d28a339922b1f30e823dd7dea50f6cb
-node: 97ff726336295abdb1756d29d22423abd81a9dcb
+node: f3c529e3da3a0bca4dcfb368c27152aec4d29780
 branch: default
-latesttag: CastleDoctrine_v29
-latesttagdistance: 21
+latesttag: CastleDoctrine_v34
+latesttagdistance: 9

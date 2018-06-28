@@ -1,7 +1,7 @@
 // if you're updating tool reaches, you need to set this flag to true
 // and run the game once to generate signatures for each reach.txt file.
 // After doing this once, you can set the flag back to false and recompile.
-// (or leave it at false if you don't want the game to check signatures at
+// (or leave it at true if you don't want the game to check signatures at
 //  all).
 // Please don't abuse this in clients that connect to the main server (don't
 // give yourself the power to club dogs from across the room, for

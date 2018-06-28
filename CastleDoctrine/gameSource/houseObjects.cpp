@@ -1,7 +1,7 @@
 // if you're updating object properties, you need to set this flag to true
 // and run the game once to generate signatures for each properties.txt file.
 // After doing this once, you can set the flag back to false and recompile.
-// (or leave it at false if you don't want the game to check signatures at
+// (or leave it at true if you don't want the game to check signatures at
 //  all).
 // Please don't abuse this in clients that connect to the main server (don't
 // give yourself the power to see through walls or see when wires are on, for
@@ -112,6 +112,10 @@ typedef struct houseObjectRecord {
         // but these are deleted after the names are converted to ids to
         // fill in groupWith
         char **groupWithNames;
+
+
+        // true if a property is set for any state of this object
+        char propertiesEverSet[ endPropertyID ];
         
     } houseObjectRecord;
 
@@ -339,6 +343,9 @@ static SpriteHandle imageToHaloSprite( Image *inImage ) {
     
     int w = alphaImage->getWidth();
     int h = alphaImage->getHeight();
+
+    // room for blur to spread 6 pixels from sprite outline
+    int extraRoom = 6;
     
     // extra room
     int haloW = w * 2;
@@ -346,6 +353,14 @@ static SpriteHandle imageToHaloSprite( Image *inImage ) {
     
     int offsetX = w/2;
     int offsetY = h/2;
+
+    // only apply blur to this region for efficiency
+    // (found with profiler)
+    int haloRegionStartX = offsetX -  extraRoom - 1;
+    int haloRegionStartY = offsetY - extraRoom - 1;
+
+    int haloRegionEndX = offsetX + w + extraRoom + 1;
+    int haloRegionEndY = offsetY + h + extraRoom + 1;
     
 
     int numHaloPixels = haloW * haloH;
@@ -376,9 +391,9 @@ static SpriteHandle imageToHaloSprite( Image *inImage ) {
                 haloChannel[haloI] = 255;
                 }
             
-            if( y > 1 && y < haloH - 1 
+            if( y > haloRegionStartY && y < haloRegionEndY 
                 && 
-                x > 1 && x < haloW - 1 ) {
+                x > haloRegionStartX && x < haloRegionEndX ) {
                 // away from border
                 touchedPixels[ numTouched ] = haloI;
                 numTouched++;
@@ -756,7 +771,8 @@ static houseObjectState readState( File *inStateDir, int inObjectID,
         if( tgaBytes != NULL ) {
             char *fileHash = computeSHA1Digest( tgaBytes, length );
             
-            char *fullString = autoSprintf( "%s %s",
+            char *fullString = autoSprintf( "%d %d %s %s",
+                                            inObjectID, inStateNumber,
                                             fileHash, propertySignatureKey );
             delete [] fileHash;
             
@@ -926,6 +942,11 @@ void initHouseObjects() {
 
             if( completeRecord ) {
 
+                for( int p=0; p<endPropertyID; p++ ) {
+                    r.propertiesEverSet[p] = false;
+                    }
+
+
                 // look for groupWith
                 r.numGroupWith = 0;
                 r.groupWithNames = NULL;
@@ -1015,6 +1036,12 @@ void initHouseObjects() {
                     if( stateDir->exists() && stateDir->isDirectory() ) {
                         
                         r.states[s] = readState( stateDir, r.id, s );
+
+                        for( int p=0; p<endPropertyID; p++ ) {
+                            if( r.states[s].properties[p] ) {
+                                r.propertiesEverSet[p] = true;
+                                }
+                            }
                         }
 
                     delete stateDir;
@@ -1028,6 +1055,88 @@ void initHouseObjects() {
                     }
 
                 objects.push_back( r );
+
+
+
+                // handle full-object signature for record r
+                File *objectSigFile = f->getChildFile( "objectSignature.txt" );
+                char *objectSigContents = objectSigFile->readFileContents();
+                
+                char *savedSig = NULL;
+                if( objectSigContents != NULL ) {
+                    savedSig = trimWhitespace( objectSigContents );
+                    delete[] objectSigContents;
+                    }
+                
+                SimpleVector<char> workingString;
+                
+                char *headerString = 
+                    autoSprintf( "%d %d %d ", r.id, 
+                                 r.numStates, r.numGroupWith );
+                
+                workingString.appendElementString( headerString );
+                delete [] headerString;
+
+                for( int i=0; i<r.numStates; i++ ) {
+                    char *stateString = 
+                        autoSprintf( "%d %d ", 
+                                     i, r.states[i].numOrientations );
+                    
+                    workingString.appendElementString( stateString );
+                    delete [] stateString;
+                    }
+                for( int i=0; i<r.numGroupWith; i++ ) {
+                    char *groupWithString = 
+                        autoSprintf( "%s ", r.groupWithNames[i] );
+                    
+                    workingString.appendElementString( groupWithString );
+                    delete [] groupWithString;
+                    }
+                
+                char *stringToSign = workingString.getElementString();
+                
+                char *sig = computeSHA1Digest( stringToSign );
+                
+                delete [] stringToSign;
+                
+                char sigOK = true;
+            
+                if( regeneratePropertySignatures ) {
+                    objectSigFile->writeToFile( sig );
+                    }
+                else if( savedSig == NULL ) {
+                    sigOK = false;
+                    }
+                else if( strcmp( sig, savedSig ) != 0 ) {
+                    sigOK = false;
+                    }
+                
+                delete objectSigFile;
+               
+                if( savedSig != NULL ) {
+                    delete [] savedSig;
+                    }
+
+                if( sig != NULL ) {
+                    delete [] sig;
+                    }
+                
+
+
+                if( ! sigOK ) {
+                    
+                    char *dirName = f->getFullFileName();
+                    char *message = 
+                        autoSprintf( "%s\n%s",
+                                     translate( "badObjectSignature" ),
+                                     dirName );
+                    delete [] dirName;
+                    
+                    loadingFailed( message );
+                    delete [] message;
+                    }
+
+                
                 }
             else {
                 delete [] r.name;
@@ -1329,6 +1438,19 @@ char isPropertySet( int inObjectID, int inState, propertyID inProperty ) {
     
     return state->properties[ inProperty ];
     }
+
+
+
+char isPropertyEverSet( int inObjectID, propertyID inProperty ) {
+    int index = idToIndexMap[inObjectID];
+    
+    houseObjectRecord *r = objects.getElement( index );
+
+    return r->propertiesEverSet[ inProperty ];
+    }
+
+
+
 
 
 

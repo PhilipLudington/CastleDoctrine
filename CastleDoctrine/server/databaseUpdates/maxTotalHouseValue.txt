@@ -1,0 +1,3 @@
+ALTER TABLE castleServer_server_stats ADD max_total_house_value INT NOT NULL DEFAULT 0 AFTER bounties_paid;
+
+UPDATE castleServer_server_stats set max_total_house_value = '0';

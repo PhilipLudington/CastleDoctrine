@@ -34,6 +34,7 @@ RobHouseGridDisplay::RobHouseGridDisplay( double inX, double inY )
           mDead( false ),
           mDeathSourceID( -1 ),
           mDeathSourceState( 1 ),
+          mFamilyAndMobilesProcessedAtEnd( false ),
           mLeaveDisplayCanBeShown( true ),
           mLeaveSprite( loadSprite( "left.tga" ) ),
           mCurrentTool( -1 ),
@@ -50,6 +51,8 @@ RobHouseGridDisplay::RobHouseGridDisplay( double inX, double inY )
           mHouseMapCellFadesWorking( NULL ),
           mForceAllTileToolTips( false ),
           mHouseMapMobileStartingPositions( NULL ),
+          mHouseMapFinalIDs( NULL ),
+          mHouseMapFinalCellStates( NULL ),
           mHouseMapMobileFinalIDs( NULL ),
           mHouseMapMobileFinalCellStates( NULL ),
           mRobberStoleFromWife( false ) {
@@ -79,6 +82,13 @@ RobHouseGridDisplay::~RobHouseGridDisplay() {
 
     if( mHouseMapMobileStartingPositions != NULL ) {
         delete [] mHouseMapMobileStartingPositions;
+        }
+
+    if( mHouseMapFinalIDs != NULL ) {
+        delete [] mHouseMapFinalIDs;
+        }
+    if( mHouseMapFinalCellStates != NULL ) {
+        delete [] mHouseMapFinalCellStates;
         }
 
     if( mHouseMapMobileFinalIDs != NULL ) {
@@ -347,6 +357,8 @@ void RobHouseGridDisplay::setHouseMap( const char *inHouseMap ) {
     mDeathSourceID = -1;
     mDeathSourceState = 1;
 
+    mFamilyAndMobilesProcessedAtEnd = false;
+
     stopUsingTool();
     mToolJustUsed = false;
     
@@ -451,6 +463,22 @@ void RobHouseGridDisplay::setHouseMap( const char *inHouseMap ) {
 
 char *RobHouseGridDisplay::getHouseMap() {
     
+    if( mHouseMapFinalIDs != NULL &&
+        mHouseMapFinalCellStates != NULL ) {
+        
+        memcpy( mHouseMapIDs, mHouseMapFinalIDs, 
+                mNumMapSpots * sizeof( int ) );
+
+        memcpy( mHouseMapCellStates, mHouseMapFinalCellStates,
+                mNumMapSpots * sizeof( int ) );
+        
+    
+        delete [] mHouseMapFinalIDs;
+        delete [] mHouseMapFinalCellStates;
+
+        mHouseMapFinalIDs = NULL;
+        mHouseMapFinalCellStates = NULL;
+        }
     if( mHouseMapMobileFinalIDs != NULL &&
         mHouseMapMobileFinalCellStates != NULL ) {
         
@@ -713,8 +741,10 @@ void RobHouseGridDisplay::applyTransitionsAndProcess() {
 
     // block death of robber on welcome mat
     // (can't even be shot by wife while on welcome mat)
+    // ALSO if robber already hit goal, robber cannot die
 
-    if( mRobberIndex != mStartIndex ) {
+    if( mRobberIndex != mStartIndex &&
+        mRobberIndex != mGoalIndex ) {
         
         // check possible sources of death
         // robber location and four neighbors
@@ -1635,6 +1665,14 @@ void RobHouseGridDisplay::keyDown( unsigned char inASCII ) {
             mSafeMoveConfirmed = true;
             // apply move again, now that we have confirmation
             moveRobber( mSafeMoveIndex );
+
+            // clear if our waiting-for-confirmation tip is still showing 
+            clearToolTip( translate( "safeMoveTip" ) );
+
+            // no action fired from this move because it isn't triggered
+            // by a specialKeyDown event in HouseGridDisplay
+            // (that event already happened, before confirmation)
+            fireActionPerformed( this );
             }
         }
     
@@ -1645,7 +1683,7 @@ void RobHouseGridDisplay::keyDown( unsigned char inASCII ) {
 
 
 void RobHouseGridDisplay::moveRobber( int inNewIndex ) {
-    if( mDead ) {
+    if( mSuccess != 0 || mDead ) {
         // can't move anymore
         return;
         }
@@ -1741,12 +1779,17 @@ void RobHouseGridDisplay::moveRobber( int inNewIndex ) {
 
 
 void RobHouseGridDisplay::robberTriedToLeave() {
-    mSuccess = 2;
-    processFamilyAndMobilesAtEnd();
+    if( mSuccess == 0 && ! mDead ) {
+        
+        mSuccess = 2;
+        processFamilyAndMobilesAtEnd();
 
-    mMoveList.push_back( stringDuplicate( "L" ) );
-
-    fireActionPerformed( this );
+        mMoveList.push_back( stringDuplicate( "L" ) );
+        
+        fireActionPerformed( this );
+        }
+    // else ignore it, and don't allow robbery to leave twice, 
+    // even if player is mashing keys
     }
 
 
@@ -2804,6 +2847,32 @@ void RobHouseGridDisplay::recomputeVisibilityFloat() {
 
 
 void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
+    if( mFamilyAndMobilesProcessedAtEnd ) {
+        // only do this once to avoid family duplication
+        return;
+        }
+
+
+    
+    if( mHouseMapFinalIDs != NULL ) {
+        delete [] mHouseMapFinalIDs;
+        mHouseMapFinalIDs = NULL;
+        }
+    if( mHouseMapFinalCellStates != NULL ) {
+        delete [] mHouseMapFinalCellStates;
+        mHouseMapFinalCellStates = NULL;
+        }
+    
+
+    int *newIDs = new int[ mNumMapSpots ];
+    int *newCellStates = new int[ mNumMapSpots ];
+    
+    memcpy( newIDs, mHouseMapIDs, mNumMapSpots * sizeof( int ) );
+    memcpy( newCellStates, mHouseMapCellStates, 
+            mNumMapSpots * sizeof( int ) );
+
+
+
     int numFamily = mFamilyObjects.size();
 
 
@@ -2829,8 +2898,8 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
                 // remove them from where they are in house
                 
                 int oldIndex = posToIndex( path[progress] );
-                mHouseMapIDs[ oldIndex ] = 0;
-                mHouseMapCellStates[ oldIndex ] = 1;
+                newIDs[ oldIndex ] = 0;
+                newCellStates[ oldIndex ] = 1;
                 }
             // otherwise, left house
             }
@@ -2865,12 +2934,17 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
             while( pathSpot < pathLength - 1 ) {
                 int newIndex = posToIndex( path[pathSpot] );
                 
-                if( mHouseMapIDs[ newIndex ] == 0 ) {
+                if( newIDs[ newIndex ] == 0 &&
+                    ( mHouseMapMobileIDs[ newIndex ] == 0
+                      ||
+                      ! isPropertySet( mHouseMapMobileIDs[ newIndex ],
+                                       mHouseMapMobileCellStates[ newIndex ],
+                                       noFamilyStartHere ) ) ) {
                     
                     found = true;
                     
-                    mHouseMapIDs[ newIndex ] = objectID;
-                    mHouseMapCellStates[ newIndex ] = 1;
+                    newIDs[ newIndex ] = objectID;
+                    newCellStates[ newIndex ] = 1;
                     break;
                     }
                 pathSpot++;
@@ -2886,12 +2960,18 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
                     for( int y=mFullMapD/2; y<mFullMapD; y++ ) {
                         int index = y * mFullMapD + x;
                         
-                        if( mHouseMapIDs[ index ] == 0 ) {
+                        if( newIDs[ index ] == 0 &&
+                            ( mHouseMapMobileIDs[ index ] == 0
+                              ||
+                              ! isPropertySet( mHouseMapMobileIDs[ index ],
+                                               mHouseMapMobileCellStates[ 
+                                                   index ],
+                                               noFamilyStartHere ) ) ) {
                             
                             found = true;
                     
-                            mHouseMapIDs[ index ] = objectID;
-                            mHouseMapCellStates[ index ] = 1;
+                            newIDs[ index ] = objectID;
+                            newCellStates[ index ] = 1;
                             break;
                             }
                         }
@@ -2903,12 +2983,18 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
                     for( int y=mFullMapD/2-1; y>=0; y-- ) {
                         int index = y * mFullMapD + x;
                         
-                        if( mHouseMapIDs[ index ] == 0 ) {
+                        if( newIDs[ index ] == 0 &&
+                            ( mHouseMapMobileIDs[ index ] == 0
+                              ||
+                              ! isPropertySet( mHouseMapMobileIDs[ index ],
+                                               mHouseMapMobileCellStates[ 
+                                                   index ],
+                                               noFamilyStartHere ) ) ) {
                             
                             found = true;
                     
-                            mHouseMapIDs[ index ] = objectID;
-                            mHouseMapCellStates[ index ] = 1;
+                            newIDs[ index ] = objectID;
+                            newCellStates[ index ] = 1;
                             break;
                             }
                         }
@@ -2926,6 +3012,9 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
 
         }
     
+
+    mHouseMapFinalIDs = newIDs;
+    mHouseMapFinalCellStates = newCellStates;
 
 
     // now mobiles
@@ -3007,5 +3096,7 @@ void RobHouseGridDisplay::processFamilyAndMobilesAtEnd() {
 
     mHouseMapMobileFinalIDs = newMobileIDs;
     mHouseMapMobileFinalCellStates = newMobileCellStates;
+
+    mFamilyAndMobilesProcessedAtEnd = true;
     }
 

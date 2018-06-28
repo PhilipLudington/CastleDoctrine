@@ -166,6 +166,13 @@ wifeOwns
 :: %s in the object name is replaced with the wife's name in possessive form.
 
 
+noFamilyStartHere
+:: for objects that should never have family members starting on top of them.
+   During family jump-back at the end of a robbery, blocked family members
+   that cannot return to their original position will avoid this object
+   when searching for an empty spot to stand.
+
+
 onTopOfPlayer
 :: for an object that is usually drawn beneath the player's sprite, drawn it
    on top instead.
